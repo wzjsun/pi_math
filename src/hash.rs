@@ -3,6 +3,8 @@
 use std::{fmt, ops, cmp, str};
 use hex::{ToHex, FromHex, FromHexError};
 use std::hash::{Hash, Hasher};
+use std::cmp::{Ordering};
+use std::str::FromStr;
 
 pub struct H32([u8; 4]);
 
@@ -137,6 +139,14 @@ impl H32 {
         self.to_hex()
     }
 
+    pub fn fromhex(hex: &str) -> H32{
+        H32::from_str(hex).expect("string can not change to H32")
+    }
+
+    pub fn cmp(&self, other: &H32) -> i8 {
+        ord_change(&self.partial_cmp(other).unwrap())
+    }
+
     pub fn reversed(&self) -> Self {
         let mut result = self.clone();
         result.reverse();
@@ -152,6 +162,161 @@ impl H32 {
     }
 }
 
+pub struct H48([u8; 6]);
+
+impl Default for H48 {
+    fn default() -> Self {
+        H48([0u8; 6])
+    }
+}
+
+impl AsRef<H48> for H48 {
+    fn as_ref(&self) -> &H48 {
+        self
+    }
+}
+
+impl Clone for H48 {
+    fn clone(&self) -> Self {
+        let mut result = Self::default();
+        result.copy_from_slice(&self.0);
+        result
+    }
+}
+
+impl From<[u8; 6]> for H48 {
+    fn from(h: [u8; 6]) -> Self {
+        H48(h)
+    }
+}
+
+impl From<H48> for [u8; 6] {
+    fn from(h: H48) -> Self {
+        h.0
+    }
+}
+
+impl<'a> From<&'a [u8]> for H48 {
+    fn from(slc: &[u8]) -> Self {
+        let mut inner = [0u8; 6];
+        inner[..].clone_from_slice(&slc[0..6]);
+        H48(inner)
+    }
+}
+
+impl From<&'static str> for H48 {
+    fn from(s: &'static str) -> Self {
+        s.parse().unwrap()
+    }
+}
+
+impl From<u8> for H48 {
+    fn from(v: u8) -> Self {
+        let mut result = Self::default();
+        result.0[0] = v;
+        result
+    }
+}
+
+impl str::FromStr for H48 {
+    type Err = FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let vec = try!(s.from_hex());
+        match vec.len() {
+            6 => {
+                let mut result = [0u8; 6];
+                result.copy_from_slice(&vec);
+                Ok(H48(result))
+            },
+            _ => Err(FromHexError::InvalidHexLength)
+        }
+    }
+}
+
+impl fmt::Debug for H48 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0.to_hex())
+    }
+}
+
+impl fmt::Display for H48 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0.to_hex())
+    }
+}
+
+impl ops::Deref for H48 {
+    type Target = [u8; 6];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ops::DerefMut for H48 {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl cmp::PartialEq for H48 {
+    fn eq(&self, other: &Self) -> bool {
+        let self_ref: &[u8] = &self.0;
+        let other_ref: &[u8] = &other.0;
+        self_ref == other_ref
+    }
+}
+
+impl cmp::PartialOrd for H48 {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        let self_ref: &[u8] = &self.0;
+        let other_ref: &[u8] = &other.0;
+        self_ref.partial_cmp(other_ref)
+    }
+}
+
+
+impl Hash for H48 {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
+        state.write(&self.0);
+        state.finish();
+    }
+}
+
+impl Eq for H48 { }
+
+impl H48 {
+    pub fn take(self) -> [u8; 6] {
+        self.0
+    }
+
+    pub fn tohex(&self) -> String {
+        self.to_hex()
+    }
+
+    pub fn fromhex(hex: &str) -> H48{
+        H48::from_str(hex).expect("string can not change to H48")
+    }
+
+    pub fn cmp(&self, other: &H48) -> i8 {
+        ord_change(&self.partial_cmp(other).unwrap())
+    }
+
+    pub fn reversed(&self) -> Self {
+        let mut result = self.clone();
+        result.reverse();
+        result
+    }
+
+    pub fn size() -> usize {
+        6
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(|b| *b == 0)
+    }
+}
 
 pub struct H160([u8; 20]);
 
@@ -284,6 +449,14 @@ impl H160 {
 
     pub fn tohex(&self) -> String {
         self.to_hex()
+    }
+
+    pub fn fromhex(hex: &str) -> H160{
+        H160::from_str(hex).expect("string can not change to H32")
+    }
+
+    pub fn cmp(&self, other: &H160) -> i8 {
+        ord_change(&self.partial_cmp(other).unwrap())
     }
 
     pub fn reversed(&self) -> Self {
@@ -432,6 +605,14 @@ impl H256 {
 
     pub fn tohex(&self) -> String {
         self.to_hex()
+    }
+
+    pub fn fromhex(hex: &str) -> H256{
+        H256::from_str(hex).expect("string can not change to H256")
+    }
+
+    pub fn cmp(&self, other: &H256) -> i8 {
+        ord_change(&self.partial_cmp(other).unwrap())
     }
 
     pub fn reversed(&self) -> Self {
@@ -595,6 +776,14 @@ impl H512 {
         self.to_hex()
     }
 
+    pub fn fromhex(hex: &str) -> H512{
+        H512::from_str(hex).expect("string can not change to H512")
+    }
+
+    pub fn cmp(&self, other: &H512) -> i8 {
+        ord_change(&self.partial_cmp(other).unwrap())
+    }
+
     pub fn reversed(&self) -> Self {
         let mut result = self.clone();
         result.reverse();
@@ -607,5 +796,169 @@ impl H512 {
 
     pub fn is_zero(&self) -> bool {
         self.0.iter().all(|b| *b == 0)
+    }
+}
+
+pub struct H520([u8; 65]);
+
+impl Default for H520 {
+    fn default() -> Self {
+        H520([0u8; 65])
+    }
+}
+
+impl AsRef<H520> for H520 {
+    fn as_ref(&self) -> &H520 {
+        self
+    }
+}
+
+impl Clone for H520 {
+    fn clone(&self) -> Self {
+        let mut result = Self::default();
+        result.copy_from_slice(&self.0);
+        result
+    }
+}
+
+impl From<[u8; 65]> for H520 {
+    fn from(h: [u8; 65]) -> Self {
+        H520(h)
+    }
+}
+
+impl From<H520> for [u8; 65] {
+    fn from(h: H520) -> Self {
+        h.0
+    }
+}
+
+impl<'a> From<&'a [u8]> for H520 {
+    fn from(slc: &[u8]) -> Self {
+        let mut inner = [0u8; 65];
+        inner[..].clone_from_slice(&slc[0..65]);
+        H520(inner)
+    }
+}
+
+impl From<&'static str> for H520 {
+    fn from(s: &'static str) -> Self {
+        s.parse().unwrap()
+    }
+}
+
+impl From<u8> for H520 {
+    fn from(v: u8) -> Self {
+        let mut result = Self::default();
+        result.0[0] = v;
+        result
+    }
+}
+
+impl str::FromStr for H520 {
+    type Err = FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let vec = try!(s.from_hex());
+        match vec.len() {
+            65 => {
+                let mut result = [0u8; 65];
+                result.copy_from_slice(&vec);
+                Ok(H520(result))
+            },
+            _ => Err(FromHexError::InvalidHexLength)
+        }
+    }
+}
+
+impl fmt::Debug for H520 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0.to_hex())
+    }
+}
+
+impl fmt::Display for H520 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.0.to_hex())
+    }
+}
+
+impl ops::Deref for H520 {
+    type Target = [u8; 65];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ops::DerefMut for H520 {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl cmp::PartialEq for H520 {
+    fn eq(&self, other: &Self) -> bool {
+        let self_ref: &[u8] = &self.0;
+        let other_ref: &[u8] = &other.0;
+        self_ref == other_ref
+    }
+}
+
+impl cmp::PartialOrd for H520 {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        let self_ref: &[u8] = &self.0;
+        let other_ref: &[u8] = &other.0;
+        self_ref.partial_cmp(other_ref)
+    }
+}
+
+
+impl Hash for H520 {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
+        state.write(&self.0);
+        state.finish();
+    }
+}
+
+impl Eq for H520 { }
+
+impl H520 {
+    pub fn take(self) -> [u8; 65] {
+        self.0
+    }
+
+    pub fn tohex(&self) -> String {
+        self.to_hex()
+    }
+
+    pub fn fromhex(hex: &str) -> H520{
+        H520::from_str(hex).expect("string can not change to H520")
+    }
+
+    pub fn cmp(&self, other: &H520) -> i8 {
+        ord_change(&self.partial_cmp(other).unwrap())
+    }
+
+    pub fn reversed(&self) -> Self {
+        let mut result = self.clone();
+        result.reverse();
+        result
+    }
+
+    pub fn size() -> usize {
+        65
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.iter().all(|b| *b == 0)
+    }
+}
+
+fn ord_change(ord: &Ordering) -> i8{
+    match ord{
+        Ordering::Equal => 0,
+        Ordering::Greater => 1,
+        Ordering::Less => -1,
     }
 }
