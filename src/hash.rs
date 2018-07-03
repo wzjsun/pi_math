@@ -139,6 +139,10 @@ impl H32 {
         self.to_hex()
     }
 
+    pub fn from_buf(buf: &[u8]) -> H32{
+        H32::from(buf)
+    }
+
     pub fn fromhex(hex: &str) -> H32{
         H32::from_str(hex).expect("string can not change to H32")
     }
@@ -293,6 +297,10 @@ impl H48 {
 
     pub fn tohex(&self) -> String {
         self.to_hex()
+    }
+
+    pub fn from_buf(buf: &[u8]) -> H48{
+        H48::from(buf)
     }
 
     pub fn fromhex(hex: &str) -> H48{
@@ -451,6 +459,10 @@ impl H160 {
         self.to_hex()
     }
 
+    pub fn from_buf(buf: &[u8]) -> H160{
+        H160::from(buf)
+    }
+
     pub fn fromhex(hex: &str) -> H160{
         H160::from_str(hex).expect("string can not change to H32")
     }
@@ -605,6 +617,10 @@ impl H256 {
 
     pub fn tohex(&self) -> String {
         self.to_hex()
+    }
+
+    pub fn from_buf(buf: &[u8]) -> H256{
+        H256::from(buf)
     }
 
     pub fn fromhex(hex: &str) -> H256{
@@ -776,6 +792,10 @@ impl H512 {
         self.to_hex()
     }
 
+    pub fn from_buf(buf: &[u8]) -> H512{
+        H512::from(buf)
+    }
+
     pub fn fromhex(hex: &str) -> H512{
         H512::from_str(hex).expect("string can not change to H512")
     }
@@ -930,6 +950,10 @@ impl H520 {
 
     pub fn tohex(&self) -> String {
         self.to_hex()
+    }
+
+    pub fn from_buf(buf: &[u8]) -> H520{
+        H520::from(buf)
     }
 
     pub fn fromhex(hex: &str) -> H520{
