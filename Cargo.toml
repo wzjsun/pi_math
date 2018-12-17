@@ -1,7 +1,5 @@
-[package]
-name = "pi_math"
-version = "0.1.0"
-authors = ["yineng <dev@dev.com>"]
-
-[dependencies]
-rustc-serialize = "0.3"
+[workspace]
+members = [
+  "cg",
+  "hash_value",
+]

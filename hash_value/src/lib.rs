@@ -1,10 +1,13 @@
-//! Fixed-size hashes
+extern crate rustc_serialize;
+
+pub use rustc_serialize::hex;
 
 use std::{fmt, ops, cmp, str};
-use hex::{ToHex, FromHex, FromHexError};
 use std::hash::{Hash, Hasher};
 use std::cmp::{Ordering};
 use std::str::FromStr;
+
+use rustc_serialize::hex::{ToHex, FromHex, FromHexError};
 
 pub struct H32([u8; 4]);
 
@@ -986,3 +989,4 @@ fn ord_change(ord: &Ordering) -> i8{
         Ordering::Less => -1,
     }
 }
+
