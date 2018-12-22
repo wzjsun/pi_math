@@ -78,7 +78,25 @@ impl<S: BaseNum> Aabb2<S> {
     #[inline]
     pub fn center(&self) -> Point2<S> {
         let two = S::one() + S::one();
-        self.min() + self.dim() / two
+        Point2::new(self.min.x+self.max.x, self.min.y+self.max.y) / two
+    }
+    #[inline]
+    pub fn is_overlapped(&self, b: &Aabb3<S>) -> bool {
+        self.min.x < b.max.x
+        && self.max.x > b.min.x
+    	&& self.min.y < b.max.y
+    	&& self.max.y > b.min.y
+    }
+    #[inline]
+    pub fn is_contain(& self, b: &Aabb3<S>) -> bool {
+        b.max.x <= self.max.x
+        && b.min.x >= self.min.x
+        && b.max.y <= self.max.y
+        && b.min.y >= self.min.y
+    }
+    #[inline]
+    pub fn is_contain_point(&self, b: &Point3<S>) -> bool {
+        b.x >= self.min.x && b.x < self.max.x && b.y >= self.min.y && b.y < self.max.y
     }
 
     /// Returns a new AABB that is grown to include the given point.
@@ -189,7 +207,29 @@ impl<S: BaseNum> Aabb3<S> {
     #[inline]
     pub fn center(&self) -> Point3<S> {
         let two = S::one() + S::one();
-        self.min() + self.dim() / two
+        Point3::new(self.min.x+self.max.x, self.min.y+self.max.y, self.min.z+self.max.z) / two
+    }
+    #[inline]
+    pub fn is_overlapped(&self, b: &Aabb3<S>) -> bool {
+        self.min.x < b.max.x
+        && self.max.x > b.min.x
+    	&& self.min.y < b.max.y
+    	&& self.max.y > b.min.y
+    	&& self.min.z < b.max.z
+    	&& self.max.z > b.min.z
+    }
+    #[inline]
+    pub fn is_contain(& self, b: &Aabb3<S>) -> bool {
+        b.max.x <= self.max.x
+        && b.min.x >= self.min.x
+        && b.max.y <= self.max.y
+        && b.min.y >= self.min.y
+        && b.max.z <= self.max.z
+        && b.min.z >= self.min.z
+    }
+    #[inline]
+    pub fn is_contain_point(&self, b: &Point3<S>) -> bool {
+        b.x >= self.min.x && b.x < self.max.x && b.y >= self.min.y && b.y < self.max.y && b.z >= self.min.z && b.z < self.max.z
     }
 
     /// Returns a new AABB that is grown to include the given point.
