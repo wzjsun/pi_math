@@ -197,7 +197,7 @@ impl<S: BaseNum, T> Tree<S, T> {
           // 在节点的childs上
           match parent.childs[node.parent_child] {
             ChildNode::Ab(ref mut ab) => ab.remove(&mut self.ab_slab, node.prev, node.next),
-            _ => (), // TODO panic
+            _ => panic!("invalid state"),
           }
         } else {
           // 在节点的nodes上
@@ -822,7 +822,7 @@ fn update<S: BaseNum, T>(
             }
           }
         }
-        _ => (), // TODO panic
+        _ => panic!("invalid state"),
       }
       if parent.layer < node.layer && parent.aabb.is_contain(&node.aabb) {
         set_tree_dirty(dirty, down(slab, adjust.1, deep, p, node, id));
@@ -905,7 +905,6 @@ pub fn remove_add<S: BaseNum, T>(
   id: usize,
   r: Option<(usize, usize, usize, usize, usize)>,
 ) {
-  println!("remove--------{:?}", r);
   // 从NodeList中移除
   if let Some((rid, child, prev, next, old_head)) = r {
     if rid > 0 {
@@ -913,7 +912,7 @@ pub fn remove_add<S: BaseNum, T>(
       if child < 8 {
         match oct.childs[child] {
           ChildNode::Ab(ref mut ab) => ab.remove(&mut tree.ab_slab, prev, next),
-          _ => (), // TODO panic
+          _ => panic!("invalid state"),
         }
       } else {
         oct.nodes.remove(&mut tree.ab_slab, prev, next);
@@ -952,7 +951,7 @@ fn remove_up<S: BaseNum>(
           }
         }
       }
-      _ => (), // TODO panic
+      _ => panic!("invalid state"),
     }
     (node.parent, node.parent_child)
   };
@@ -1191,7 +1190,7 @@ fn split_down<S: BaseNum, T>(
             }
             continue;
           }
-          _ => (), // TODO panic
+          _ => panic!("invalid state"),
         }
       }
     };
