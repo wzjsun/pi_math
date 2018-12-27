@@ -18,16 +18,15 @@ extern crate core;
 
 #[macro_use]
 extern crate cgmath;
+extern crate collision;
 extern crate slab;
 
 #[macro_use]
 extern crate serde;
 extern crate serde_json;
 
-pub mod aabb;
 pub mod color;
-pub mod frustum;
-pub mod plane;
 pub mod octree;
 
 pub use cgmath::*;
+pub use collision::*;

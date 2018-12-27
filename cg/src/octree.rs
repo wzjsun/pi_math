@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use aabb::Aabb3;
+use {Aabb, Aabb3, Contains};
 use {BaseNum, Point3, Vector3};
 
 use slab::Slab;
@@ -98,12 +98,12 @@ impl<S: BaseNum, T> Tree<S, T> {
     let next = {
       let node = unsafe { self.ab_slab.get_unchecked_mut(nid) };
       let root = unsafe { self.oct_slab.get_unchecked_mut(1) };
-      if root.aabb.is_contain(&node.aabb) {
+      if root.aabb.contains(&node.aabb) {
         set_tree_dirty(
           &mut self.dirty,
           down(&mut self.oct_slab, self.adjust.1, self.deep, 1, node, nid),
         );
-      } else if root.aabb.is_overlapped(&node.aabb) {
+      } else if intersects(&root.aabb, &node.aabb) {
         // 相交的放在root的nodes上
         node.parent = 1;
         node.next = root.nodes.head;
@@ -417,6 +417,18 @@ impl<S: BaseNum, T> AbNode<S, T> {
 //         write!(f, "aabb: {:?}, bind: {:?}, layer: {:?}, parent: {:?}, parent_child: {:?}, prev: {:?}, next: {:?}", self.aabb, self.bind, self.layer, self.parent, self.parent_child, self.prev, self.next)
 //     }
 // }
+
+// aabb是否相交
+#[inline]
+fn intersects<S:BaseNum>(a: &Aabb3<S>, b: &Aabb3<S>) -> bool {
+  a.min.x < b.max.x
+  && a.max.x > b.min.x
+  && a.min.y < b.max.y
+  && a.max.y > b.min.y
+  && a.min.z < b.max.z
+  && a.max.z > b.min.z
+}
+
 // 计算该aabb对应的层
 #[inline]
 fn calc_layer<S: BaseNum>(loose: &Vector3<S>, el: &Vector3<S>) -> usize {
@@ -480,53 +492,53 @@ fn check_contain<S: BaseNum>(
     ),
     _ => Aabb3::new(parent.min(), Point3::new(x2, y2, z2)),
   };
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return child;
   }
-  if !parent.is_contain(&node) {
+  if !parent.contains(node) {
     return 8;
   }
   let a = Aabb3::new(Point3::new(x1, y1, z1), parent.max());
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 0;
   }
   let a = Aabb3::new(
     Point3::new(parent.min.x, y1, z1),
     Point3::new(x2, parent.max.y, parent.max.z),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 1;
   }
   let a = Aabb3::new(
     Point3::new(x1, parent.min.y, z1),
     Point3::new(parent.max.x, y2, parent.max.z),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 2;
   }
   let a = Aabb3::new(
     Point3::new(parent.min.x, parent.min.y, z1),
     Point3::new(x2, y2, parent.max.z),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 4;
   }
   let a = Aabb3::new(
     Point3::new(parent.min.x, y1, parent.min.z),
     Point3::new(x2, parent.max.y, z2),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 5;
   }
   let a = Aabb3::new(
     Point3::new(x1, parent.min.y, parent.min.z),
     Point3::new(parent.max.x, y2, z2),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 6;
   }
   let a = Aabb3::new(parent.min(), Point3::new(x2, y2, z2));
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 7;
   }
   return 3;
@@ -541,46 +553,46 @@ fn get_child<S: BaseNum>(parent: &Aabb3<S>, loose: &Vector3<S>, node: &Aabb3<S>)
   let y2 = (parent.min.y + parent.max.y + loose.y) / two;
   let z2 = (parent.min.z + parent.max.z + loose.z) / two;
   let a = Aabb3::new(Point3::new(x1, y1, z1), parent.max());
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 0;
   }
   let a = Aabb3::new(
     Point3::new(parent.min.x, y1, z1),
     Point3::new(x2, parent.max.y, parent.max.z),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 1;
   }
   let a = Aabb3::new(
     Point3::new(x1, parent.min.y, z1),
     Point3::new(parent.max.x, y2, parent.max.z),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 2;
   }
   let a = Aabb3::new(
     Point3::new(parent.min.x, parent.min.y, z1),
     Point3::new(x2, y2, parent.max.z),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 4;
   }
   let a = Aabb3::new(
     Point3::new(parent.min.x, y1, parent.min.z),
     Point3::new(x2, parent.max.y, z2),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 5;
   }
   let a = Aabb3::new(
     Point3::new(x1, parent.min.y, parent.min.z),
     Point3::new(parent.max.x, y2, z2),
   );
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 6;
   }
   let a = Aabb3::new(parent.min(), Point3::new(x2, y2, z2));
-  if a.is_contain(&node) {
+  if a.contains(node) {
     return 7;
   }
   return 3;
@@ -605,7 +617,7 @@ fn down<S: BaseNum, T>(
   #[macro_use()]
   macro_rules! child_macro {
     ($a:ident, $i:tt) => {
-      if $a.is_contain(&node.aabb) {
+      if $a.contains(&node.aabb) {
         match parent.childs[$i] {
           ChildNode::Oct(oct, ref mut num) => {
             *num += 1;
@@ -720,7 +732,7 @@ fn update<S: BaseNum, T>(
         (parent.parent, parent.parent_child, c, prev, next)
       } else {
         // nodes上物体
-        if parent.aabb.is_contain(&node.aabb) {
+        if parent.aabb.contains(&node.aabb) {
           if node.layer == old_layer {
             return None;
           }
@@ -824,7 +836,7 @@ fn update<S: BaseNum, T>(
         }
         _ => panic!("invalid state"),
       }
-      if parent.layer < node.layer && parent.aabb.is_contain(&node.aabb) {
+      if parent.layer < node.layer && parent.aabb.contains(&node.aabb) {
         set_tree_dirty(dirty, down(slab, adjust.1, deep, p, node, id));
         return Some((old_p, old_c, prev, next, node.next));
       }
@@ -835,7 +847,7 @@ fn update<S: BaseNum, T>(
       }
     }
     // 判断根节点是否相交
-    if parent.aabb.is_overlapped(&node.aabb) {
+    if intersects(&parent.aabb, &node.aabb) {
       // 相交的放在root的nodes上
       node.parent = 1;
       node.next = parent.nodes.head;
@@ -850,12 +862,12 @@ fn update<S: BaseNum, T>(
     if node.layer > 0 {
       // 边界物体移动
       let root = unsafe { slab.get_unchecked_mut(1) };
-      if root.aabb.is_overlapped(&node.aabb) {
+      if intersects(&root.aabb, &node.aabb) {
         // 判断是否相交或包含
         let prev = node.prev;
         let next = node.next;
         node.prev = 0;
-        if root.aabb.is_contain(&node.aabb) {
+        if root.aabb.contains(&node.aabb) {
           set_tree_dirty(dirty, down(slab, adjust.1, deep, 1, node, id));
           Some((1, 8, prev, next, node.next))
         } else {
@@ -878,13 +890,13 @@ fn update<S: BaseNum, T>(
     }
   } else {
     let root = unsafe { slab.get_unchecked_mut(1) };
-    if root.aabb.is_overlapped(&node.aabb) {
+    if intersects(&root.aabb, &node.aabb) {
       // 判断是否相交或包含
       let prev = node.prev;
       let next = node.next;
       node.prev = 0;
       node.parent_child = 8;
-      if root.aabb.is_contain(&node.aabb) {
+      if root.aabb.contains(&node.aabb) {
         set_tree_dirty(dirty, down(slab, adjust.1, deep, 1, node, id));
       } else {
         // 相交的放在root的nodes上
@@ -1178,7 +1190,7 @@ fn split_down<S: BaseNum, T>(
   #[macro_use()]
   macro_rules! child_macro {
     ($a:ident, $node:ident, $id:tt, $i:tt) => {
-      if $a.is_contain(&$node.aabb) {
+      if $a.contains(&$node.aabb) {
         match parent.childs[$i] {
           ChildNode::Ab(ref mut list) => {
             $node.parent = parent_id;
@@ -1390,6 +1402,7 @@ fn collision_node<S: BaseNum, T, A>(
 ) {
 
 }
+
 
 
 

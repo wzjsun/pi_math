@@ -5,6 +5,7 @@ authors = ["yineng <dev@dev.com>"]
 
 [dependencies]
 cgmath = { version = "0.16.1", features = ["serde"] }
+collision = { version = "0.18.0", features = ["serde"] }
 serde = { version = "1.0.79", features = ["serde_derive"] }
 serde_json = { version = "1.0.32" }
 slab = { path = "../../pi_lib/slab" }
