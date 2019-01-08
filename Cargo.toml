@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "cg",
+  "cgmath",
   "hash_value",
 ]
