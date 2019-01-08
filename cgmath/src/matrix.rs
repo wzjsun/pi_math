@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// use rand::distributions::{Standard, Distribution};
-// use rand::Rng;
+// use rand::{Rand, Rng};
 use num_traits::{cast, NumCast};
 use std::fmt;
 use std::iter;
@@ -25,7 +24,7 @@ use std::ptr;
 use structure::*;
 
 use angle::Rad;
-use approx;
+use approx::ApproxEq;
 use euler::Euler;
 use num::BaseFloat;
 use point::{Point2, Point3};
@@ -106,11 +105,6 @@ impl<S: BaseFloat> Matrix2<S> {
         let (s, c) = Rad::sin_cos(theta.into());
 
         Matrix2::new(c, s, -s, c)
-    }
-
-    /// Are all entries in the matrix finite.
-    pub fn is_finite(&self) -> bool {
-        self.x.is_finite() && self.y.is_finite()
     }
 }
 
@@ -210,11 +204,6 @@ impl<S: BaseFloat> Matrix3<S> {
             _1subc * axis.y * axis.z - s * axis.x,
             _1subc * axis.z * axis.z + c,
         )
-    }
-
-    /// Are all entries in the matrix finite.
-    pub fn is_finite(&self) -> bool {
-        self.x.is_finite() && self.y.is_finite() && self.z.is_finite()
     }
 }
 
@@ -367,11 +356,6 @@ impl<S: BaseFloat> Matrix4<S> {
 
             S::zero(), S::zero(), S::zero(), S::one(),
         )
-    }
-
-    /// Are all entries in the matrix finite.
-    pub fn is_finite(&self) -> bool {
-        self.w.is_finite() && self.x.is_finite() && self.y.is_finite() && self.z.is_finite()
     }
 }
 
@@ -832,7 +816,7 @@ impl<S: BaseFloat> SquareMatrix for Matrix4<S> {
     }
 }
 
-impl<S: BaseFloat> approx::AbsDiffEq for Matrix2<S> {
+impl<S: BaseFloat> ApproxEq for Matrix2<S> {
     type Epsilon = S::Epsilon;
 
     #[inline]
@@ -841,29 +825,19 @@ impl<S: BaseFloat> approx::AbsDiffEq for Matrix2<S> {
     }
 
     #[inline]
-    fn abs_diff_eq(&self, other: &Self, epsilon: S::Epsilon) -> bool {
-        Vector2::abs_diff_eq(&self[0], &other[0], epsilon)
-            && Vector2::abs_diff_eq(&self[1], &other[1], epsilon)
-    }
-}
-
-impl<S: BaseFloat> approx::RelativeEq for Matrix2<S> {
-    #[inline]
     fn default_max_relative() -> S::Epsilon {
         S::default_max_relative()
+    }
+
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        S::default_max_ulps()
     }
 
     #[inline]
     fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
         Vector2::relative_eq(&self[0], &other[0], epsilon, max_relative)
             && Vector2::relative_eq(&self[1], &other[1], epsilon, max_relative)
-    }
-}
-
-impl<S: BaseFloat> approx::UlpsEq for Matrix2<S> {
-    #[inline]
-    fn default_max_ulps() -> u32 {
-        S::default_max_ulps()
     }
 
     #[inline]
@@ -873,7 +847,7 @@ impl<S: BaseFloat> approx::UlpsEq for Matrix2<S> {
     }
 }
 
-impl<S: BaseFloat> approx::AbsDiffEq for Matrix3<S> {
+impl<S: BaseFloat> ApproxEq for Matrix3<S> {
     type Epsilon = S::Epsilon;
 
     #[inline]
@@ -882,17 +856,13 @@ impl<S: BaseFloat> approx::AbsDiffEq for Matrix3<S> {
     }
 
     #[inline]
-    fn abs_diff_eq(&self, other: &Self, epsilon: S::Epsilon) -> bool {
-        Vector3::abs_diff_eq(&self[0], &other[0], epsilon)
-            && Vector3::abs_diff_eq(&self[1], &other[1], epsilon)
-            && Vector3::abs_diff_eq(&self[2], &other[2], epsilon)
-    }
-}
-
-impl<S: BaseFloat> approx::RelativeEq for Matrix3<S> {
-    #[inline]
     fn default_max_relative() -> S::Epsilon {
         S::default_max_relative()
+    }
+
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        S::default_max_ulps()
     }
 
     #[inline]
@@ -900,13 +870,6 @@ impl<S: BaseFloat> approx::RelativeEq for Matrix3<S> {
         Vector3::relative_eq(&self[0], &other[0], epsilon, max_relative)
             && Vector3::relative_eq(&self[1], &other[1], epsilon, max_relative)
             && Vector3::relative_eq(&self[2], &other[2], epsilon, max_relative)
-    }
-}
-
-impl<S: BaseFloat> approx::UlpsEq for Matrix3<S> {
-    #[inline]
-    fn default_max_ulps() -> u32 {
-        S::default_max_ulps()
     }
 
     #[inline]
@@ -917,7 +880,7 @@ impl<S: BaseFloat> approx::UlpsEq for Matrix3<S> {
     }
 }
 
-impl<S: BaseFloat> approx::AbsDiffEq for Matrix4<S> {
+impl<S: BaseFloat> ApproxEq for Matrix4<S> {
     type Epsilon = S::Epsilon;
 
     #[inline]
@@ -926,18 +889,13 @@ impl<S: BaseFloat> approx::AbsDiffEq for Matrix4<S> {
     }
 
     #[inline]
-    fn abs_diff_eq(&self, other: &Self, epsilon: S::Epsilon) -> bool {
-        Vector4::abs_diff_eq(&self[0], &other[0], epsilon)
-            && Vector4::abs_diff_eq(&self[1], &other[1], epsilon)
-            && Vector4::abs_diff_eq(&self[2], &other[2], epsilon)
-            && Vector4::abs_diff_eq(&self[3], &other[3], epsilon)
-    }
-}
-
-impl<S: BaseFloat> approx::RelativeEq for Matrix4<S> {
-    #[inline]
     fn default_max_relative() -> S::Epsilon {
         S::default_max_relative()
+    }
+
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        S::default_max_ulps()
     }
 
     #[inline]
@@ -946,13 +904,6 @@ impl<S: BaseFloat> approx::RelativeEq for Matrix4<S> {
             && Vector4::relative_eq(&self[1], &other[1], epsilon, max_relative)
             && Vector4::relative_eq(&self[2], &other[2], epsilon, max_relative)
             && Vector4::relative_eq(&self[3], &other[3], epsilon, max_relative)
-    }
-}
-
-impl<S: BaseFloat> approx::UlpsEq for Matrix4<S> {
-    #[inline]
-    fn default_max_ulps() -> u32 {
-        S::default_max_ulps()
     }
 
     #[inline]
@@ -1530,24 +1481,19 @@ impl<S: fmt::Debug> fmt::Debug for Matrix4<S> {
     }
 }
 
-// impl<S> Distribution<Matrix2<S>> for Standard
-//     where 
-//         Standard: Distribution<Vector2<S>>,
-//         S: BaseFloat {
+// impl<S: BaseFloat + Rand> Rand for Matrix2<S> {
 //     #[inline]
-//     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Matrix2<S> {
+//     fn rand<R: Rng>(rng: &mut R) -> Matrix2<S> {
 //         Matrix2 {
-//             x: self.sample(rng),
-//             y: self.sample(rng),
+//             x: rng.gen(),
+//             y: rng.gen(),
 //         }
 //     }
 // }
 
-// impl<S> Distribution<Matrix3<S>> for Standard
-//     where Standard: Distribution<Vector3<S>>,
-//         S: BaseFloat {
+// impl<S: BaseFloat + Rand> Rand for Matrix3<S> {
 //     #[inline]
-//     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Matrix3<S> {
+//     fn rand<R: Rng>(rng: &mut R) -> Matrix3<S> {
 //         Matrix3 {
 //             x: rng.gen(),
 //             y: rng.gen(),
@@ -1556,11 +1502,9 @@ impl<S: fmt::Debug> fmt::Debug for Matrix4<S> {
 //     }
 // }
 
-// impl<S> Distribution<Matrix4<S>> for Standard
-//     where Standard: Distribution<Vector4<S>>,
-//         S: BaseFloat {
+// impl<S: BaseFloat + Rand> Rand for Matrix4<S> {
 //     #[inline]
-//     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Matrix4<S> {
+//     fn rand<R: Rng>(rng: &mut R) -> Matrix4<S> {
 //         Matrix4 {
 //             x: rng.gen(),
 //             y: rng.gen(),

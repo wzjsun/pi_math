@@ -24,9 +24,8 @@ use num::BaseFloat;
 
 /// Create a perspective projection matrix.
 ///
-/// This is the equivalent to the [`gluPerspective`] function.
-///
-/// [`gluPerspective`]: https://www.opengl.org/sdk/docs/man2/xhtml/gluPerspective.xml
+/// This is the equivalent to the [gluPerspective]
+/// (http://www.opengl.org/sdk/docs/man2/xhtml/gluPerspective.xml) function.
 pub fn perspective<S: BaseFloat, A: Into<Rad<S>>>(
     fovy: A,
     aspect: S,
@@ -43,9 +42,8 @@ pub fn perspective<S: BaseFloat, A: Into<Rad<S>>>(
 
 /// Create a perspective matrix from a view frustum.
 ///
-/// This is the equivalent of the now deprecated [`glFrustum`] function.
-///
-/// [`glFrustum`]: http://www.opengl.org/sdk/docs/man2/xhtml/glFrustum.xml
+/// This is the equivalent of the now deprecated [glFrustum]
+/// (http://www.opengl.org/sdk/docs/man2/xhtml/glFrustum.xml) function.
 pub fn frustum<S: BaseFloat>(left: S, right: S, bottom: S, top: S, near: S, far: S) -> Matrix4<S> {
     Perspective {
         left: left,
@@ -59,9 +57,8 @@ pub fn frustum<S: BaseFloat>(left: S, right: S, bottom: S, top: S, near: S, far:
 
 /// Create an orthographic projection matrix.
 ///
-/// This is the equivalent of the now deprecated [`glOrtho`] function.
-///
-/// [`glOrtho`]: http://www.opengl.org/sdk/docs/man2/xhtml/glOrtho.xml
+/// This is the equivalent of the now deprecated [glOrtho]
+/// (http://www.opengl.org/sdk/docs/man2/xhtml/glOrtho.xml) function.
 pub fn ortho<S: BaseFloat>(left: S, right: S, bottom: S, top: S, near: S, far: S) -> Matrix4<S> {
     Ortho {
         left: left,

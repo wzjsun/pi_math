@@ -6,5 +6,6 @@ authors = ["yineng <dev@dev.com>"]
 [dependencies]
 # cgmath = { version = "0.16.1" }
 cgmath = { path = "../cgmath" }
+collision = { path = "../collision" }
 slab = { path = "../../pi_lib/slab" }
 

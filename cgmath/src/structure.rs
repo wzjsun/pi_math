@@ -20,7 +20,7 @@ use std::cmp;
 use std::iter;
 use std::ops::*;
 
-use approx;
+use approx::ApproxEq;
 
 use angle::Rad;
 use num::{BaseFloat, BaseNum};
@@ -87,11 +87,6 @@ where
     fn product(self) -> Self::Element
     where
         Self::Element: Mul<Output = <Self as Array>::Element>;
-
-    /// Whether all elements of the array are finite
-    fn is_finite(&self) -> bool
-    where
-        Self::Element: BaseFloat;
 }
 
 /// Element-wise arithmetic operations. These are supplied for pragmatic
@@ -215,9 +210,7 @@ where
     // FIXME: Ugly type signatures - blocked by rust-lang/rust#24092
     <Self as VectorSpace>::Scalar: BaseFloat,
     Self: MetricSpace<Metric = <Self as VectorSpace>::Scalar>,
-    // Self: approx::AbsDiffEq<Epsilon = <Self as VectorSpace>::Scalar>,
-    // Self: approx::RelativeEq<Epsilon = <Self as VectorSpace>::Scalar>,
-    Self: approx::UlpsEq<Epsilon = <Self as VectorSpace>::Scalar>,
+    Self: ApproxEq<Epsilon = <Self as VectorSpace>::Scalar>,
 {
     /// Vector dot (or inner) product.
     fn dot(self, other: Self) -> Self::Scalar;
@@ -432,9 +425,7 @@ where
     // FIXME: Ugly type signatures - blocked by rust-lang/rust#24092
     Self: Index<usize, Output = <Self as Matrix>::Column>,
     Self: IndexMut<usize, Output = <Self as Matrix>::Column>,
-    Self: approx::AbsDiffEq<Epsilon = <Self as VectorSpace>::Scalar>,
-    Self: approx::RelativeEq<Epsilon = <Self as VectorSpace>::Scalar>,
-    Self: approx::UlpsEq<Epsilon = <Self as VectorSpace>::Scalar>,
+    Self: ApproxEq<Epsilon = <Self as VectorSpace>::Scalar>,
 {
     /// The row vector of the matrix.
     type Row: VectorSpace<Scalar = Self::Scalar> + Array<Element = Self::Scalar>;
@@ -574,9 +565,7 @@ where
     Self: Copy + Clone,
     Self: PartialEq + cmp::PartialOrd,
     // FIXME: Ugly type signatures - blocked by rust-lang/rust#24092
-    Self: approx::AbsDiffEq<Epsilon = <Self as Angle>::Unitless>,
-    Self: approx::RelativeEq<Epsilon = <Self as Angle>::Unitless>,
-    Self: approx::UlpsEq<Epsilon = <Self as Angle>::Unitless>,
+    Self: ApproxEq<Epsilon = <Self as Angle>::Unitless>,
 
     Self: Zero,
 

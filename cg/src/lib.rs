@@ -17,12 +17,12 @@
 extern crate core;
 
 extern crate cgmath;
-// extern crate collision;
+extern crate collision;
 extern crate slab;
 
 
 pub mod color;
-// pub mod octree;
+pub mod octree;
 
 pub use cgmath::*;
-// pub use collision::*;
+pub use collision::*;
