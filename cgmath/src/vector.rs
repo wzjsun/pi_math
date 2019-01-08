@@ -13,8 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// use rand::distributions::{Distribution, Standard};
-// use rand::Rng;
+// use rand::{Rand, Rng};
 use num_traits::{Bounded, NumCast};
 use std::fmt;
 use std::iter;
@@ -24,7 +23,7 @@ use std::ops::*;
 use structure::*;
 
 use angle::Rad;
-use approx;
+use approx::ApproxEq;
 use num::{BaseFloat, BaseNum};
 
 #[cfg(feature = "simd")]
@@ -164,10 +163,6 @@ macro_rules! impl_vector {
             fn product(self) -> S where S: Mul<Output = S> {
                 fold_array!(mul, { $(self.$field),+ })
             }
-
-            fn is_finite(&self) -> bool where S: BaseFloat {
-                $(self.$field.is_finite())&&+
-            }
         }
 
         impl<S: BaseNum> Zero for $VectorN<S> {
@@ -207,7 +202,7 @@ macro_rules! impl_vector {
             fn neg(self) -> $VectorN<S> { $VectorN::new($(-self.$field),+) }
         }
 
-        impl<S: BaseFloat> approx::AbsDiffEq for $VectorN<S> {
+        impl<S: BaseFloat> ApproxEq for $VectorN<S> {
             type Epsilon = S::Epsilon;
 
             #[inline]
@@ -216,27 +211,18 @@ macro_rules! impl_vector {
             }
 
             #[inline]
-            fn abs_diff_eq(&self, other: &Self, epsilon: S::Epsilon) -> bool {
-                $(S::abs_diff_eq(&self.$field, &other.$field, epsilon))&&+
-            }
-        }
-
-        impl<S: BaseFloat> approx::RelativeEq for $VectorN<S> {
-            #[inline]
             fn default_max_relative() -> S::Epsilon {
                 S::default_max_relative()
             }
 
             #[inline]
-            fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
-                $(S::relative_eq(&self.$field, &other.$field, epsilon, max_relative))&&+
-            }
-        }
-
-        impl<S: BaseFloat> approx::UlpsEq for $VectorN<S> {
-            #[inline]
             fn default_max_ulps() -> u32 {
                 S::default_max_ulps()
+            }
+
+            #[inline]
+            fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
+                $(S::relative_eq(&self.$field, &other.$field, epsilon, max_relative))&&+
             }
 
             #[inline]
@@ -245,11 +231,9 @@ macro_rules! impl_vector {
             }
         }
 
-        // impl<S> Distribution<$VectorN<S>> for Standard
-        //     where Standard: Distribution<S>,
-        //         S: BaseFloat {
+        // impl<S: BaseFloat + Rand> Rand for $VectorN<S> {
         //     #[inline]
-        //     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $VectorN<S> {
+        //     fn rand<R: Rng>(rng: &mut R) -> $VectorN<S> {
         //         $VectorN { $($field: rng.gen()),+ }
         //     }
         // }
@@ -369,13 +353,6 @@ macro_rules! impl_vector_default {
             $VectorN::new($($field),+)
         }
 
-        impl<S: BaseFloat> $VectorN<S> {
-            /// True if all entries in the vector are finite
-            pub fn is_finite(&self) -> bool {
-                $(self.$field.is_finite())&&+
-            }
-        }
-
         impl<S: NumCast + Copy> $VectorN<S> {
             /// Component-wise casting to another type.
             #[inline]
@@ -421,10 +398,6 @@ macro_rules! impl_vector_default {
             fn product(self) -> S where S: Mul<Output = S> {
                 fold_array!(mul, { $(self.$field),+ })
             }
-
-            fn is_finite(&self) -> bool where S: BaseFloat {
-                $(self.$field.is_finite())&&+
-            }
         }
 
         impl<S: BaseNum> Zero for $VectorN<S> {
@@ -464,7 +437,7 @@ macro_rules! impl_vector_default {
             default fn neg(self) -> $VectorN<S> { $VectorN::new($(-self.$field),+) }
         }
 
-        impl<S: BaseFloat> approx::AbsDiffEq for $VectorN<S> {
+        impl<S: BaseFloat> ApproxEq for $VectorN<S> {
             type Epsilon = S::Epsilon;
 
             #[inline]
@@ -473,27 +446,18 @@ macro_rules! impl_vector_default {
             }
 
             #[inline]
-            fn abs_diff_eq(&self, other: &Self, epsilon: S::Epsilon) -> bool {
-                $(S::abs_diff_eq(&self.$field, &other.$field, epsilon))&&+
-            }
-        }
-
-        impl<S: BaseFloat> approx::RelativeEq for $VectorN<S> {
-            #[inline]
             fn default_max_relative() -> S::Epsilon {
                 S::default_max_relative()
             }
 
             #[inline]
-            fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
-                $(S::relative_eq(&self.$field, &other.$field, epsilon, max_relative))&&+
-            }
-        }
-
-        impl<S: BaseFloat> approx::UlpsEq for $VectorN<S> {
-            #[inline]
             fn default_max_ulps() -> u32 {
                 S::default_max_ulps()
+            }
+
+            #[inline]
+            fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
+                $(S::relative_eq(&self.$field, &other.$field, epsilon, max_relative))&&+
             }
 
             #[inline]
@@ -502,14 +466,12 @@ macro_rules! impl_vector_default {
             }
         }
 
-        impl<S> Distribution<$VectorN<S>> for Standard 
-            where S: BaseFloat,
-                Standard: Distribution<S>  {
-            #[inline]
-            fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $VectorN<S> {
-                $VectorN { $($field: rng.gen()),+ }
-            }
-        }
+        // impl<S: BaseFloat + Rand> Rand for $VectorN<S> {
+        //     #[inline]
+        //     fn rand<R: Rng>(rng: &mut R) -> $VectorN<S> {
+        //         $VectorN { $($field: rng.gen()),+ }
+        //     }
+        // }
 
         impl_operator_default!(<S: BaseNum> Add<$VectorN<S> > for $VectorN<S> {
             fn add(lhs, rhs) -> $VectorN<S> { $VectorN::new($(lhs.$field + rhs.$field),+) }
@@ -1361,14 +1323,6 @@ mod tests {
                 assert_eq!(v, &VECTOR2);
             }
         }
-
-        #[test]
-        fn test_is_finite() {
-            use num_traits::Float;
-            assert!(!Vector2::from([Float::nan(), 1.0]).is_finite());
-            assert!(!Vector2::from([1.0, Float::infinity()]).is_finite());
-            assert!(Vector2::from([-1.0, 1.0]).is_finite());
-        }
     }
 
     mod vector3 {
@@ -1473,14 +1427,6 @@ mod tests {
                 let v: &mut Vector3<_> = From::from(v);
                 assert_eq!(v, &VECTOR3);
             }
-        }
-
-        #[test]
-        fn test_is_finite() {
-            use num_traits::Float;
-            assert!(!Vector3::from([Float::nan(), 1.0, 1.0]).is_finite());
-            assert!(!Vector3::from([1.0, 1.0, Float::infinity()]).is_finite());
-            assert!(Vector3::from([-1.0, 1.0, 1.0]).is_finite());
         }
     }
 
@@ -1592,14 +1538,6 @@ mod tests {
                 let v: &mut Vector4<_> = From::from(v);
                 assert_eq!(v, &VECTOR4);
             }
-        }
-
-        #[test]
-        fn test_is_finite() {
-            use num_traits::Float;
-            assert!(!Vector4::from([0.0, Float::nan(), 1.0, 1.0]).is_finite());
-            assert!(!Vector4::from([1.0, 1.0, Float::neg_infinity(), 0.0]).is_finite());
-            assert!(Vector4::from([-1.0, 0.0, 1.0, 1.0]).is_finite());
         }
     }
 }

@@ -20,14 +20,13 @@ use std::f64;
 use std::iter;
 use std::ops::*;
 
-// use rand::Rng;
-// use rand::distributions::{Distribution, Standard};
-// use rand::distributions::uniform::SampleUniform;
+// use rand::{Rand, Rng};
+// use rand::distributions::range::SampleRange;
 use num_traits::{cast, Bounded};
 
 use structure::*;
 
-use approx;
+use approx::ApproxEq;
 use num::BaseFloat;
 
 /// An angle, in radians.
@@ -171,7 +170,7 @@ macro_rules! impl_angle {
             fn div_assign(&mut self, scalar) { self.0 /= scalar; }
         });
 
-        impl<S: BaseFloat> approx::AbsDiffEq for $Angle<S> {
+        impl<S: BaseFloat> ApproxEq for $Angle<S> {
             type Epsilon = S::Epsilon;
 
             #[inline]
@@ -180,27 +179,18 @@ macro_rules! impl_angle {
             }
 
             #[inline]
-            fn abs_diff_eq(&self, other: &Self, epsilon: S::Epsilon) -> bool {
-                S::abs_diff_eq(&self.0, &other.0, epsilon)
-            }
-        }
-
-        impl<S: BaseFloat> approx::RelativeEq for $Angle<S> {
-            #[inline]
             fn default_max_relative() -> S::Epsilon {
                 S::default_max_relative()
             }
 
             #[inline]
-            fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
-                S::relative_eq(&self.0, &other.0, epsilon, max_relative)
-            }
-        }
-
-        impl<S: BaseFloat> approx::UlpsEq for $Angle<S> {
-            #[inline]
             fn default_max_ulps() -> u32 {
                 S::default_max_ulps()
+            }
+
+            #[inline]
+            fn relative_eq(&self, other: &Self, epsilon: S::Epsilon, max_relative: S::Epsilon) -> bool {
+                S::relative_eq(&self.0, &other.0, epsilon, max_relative)
             }
 
             #[inline]
@@ -209,12 +199,10 @@ macro_rules! impl_angle {
             }
         }
 
-        // impl<S> Distribution<$Angle<S>> for Standard
-        //     where Standard: Distribution<S>,
-        //         S: BaseFloat + SampleUniform {
+        // impl<S: BaseFloat + SampleRange> Rand for $Angle<S> {
         //     #[inline]
-        //     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $Angle<S> {
-        //         $Angle(rng.gen_range(cast::<_, S>(-$hi).unwrap(), cast::<_, S>($hi).unwrap()))
+        //     fn rand<R: Rng>(rng: &mut R) -> $Angle<S> {
+        //         $Angle(rng.gen_range(cast(-$hi).unwrap(), cast($hi).unwrap()))
         //     }
         // }
 

@@ -13,14 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// use rand::distributions::{Distribution, Standard};
-// use rand::Rng;
+// use rand::{Rand, Rng};
 use num_traits::cast;
 
 use structure::*;
 
 use angle::Rad;
-use approx;
+use approx::ApproxEq;
 use quaternion::Quaternion;
 #[cfg(feature = "mint")]
 use mint;
@@ -142,7 +141,7 @@ impl<S: BaseFloat> From<Quaternion<S>> for Euler<Rad<S>> {
     }
 }
 
-impl<A: Angle> approx::AbsDiffEq for Euler<A> {
+impl<A: Angle> ApproxEq for Euler<A> {
     type Epsilon = A::Epsilon;
 
     #[inline]
@@ -151,17 +150,13 @@ impl<A: Angle> approx::AbsDiffEq for Euler<A> {
     }
 
     #[inline]
-    fn abs_diff_eq(&self, other: &Self, epsilon: A::Epsilon) -> bool {
-        A::abs_diff_eq(&self.x, &other.x, epsilon)
-            && A::abs_diff_eq(&self.y, &other.y, epsilon)
-            && A::abs_diff_eq(&self.z, &other.z, epsilon)
-    }
-}
-
-impl<A: Angle> approx::RelativeEq for Euler<A> {
-    #[inline]
     fn default_max_relative() -> A::Epsilon {
         A::default_max_relative()
+    }
+
+    #[inline]
+    fn default_max_ulps() -> u32 {
+        A::default_max_ulps()
     }
 
     #[inline]
@@ -169,13 +164,6 @@ impl<A: Angle> approx::RelativeEq for Euler<A> {
         A::relative_eq(&self.x, &other.x, epsilon, max_relative)
             && A::relative_eq(&self.y, &other.y, epsilon, max_relative)
             && A::relative_eq(&self.z, &other.z, epsilon, max_relative)
-    }
-}
-
-impl<A: Angle> approx::UlpsEq for Euler<A> {
-    #[inline]
-    fn default_max_ulps() -> u32 {
-        A::default_max_ulps()
     }
 
     #[inline]
@@ -186,10 +174,9 @@ impl<A: Angle> approx::UlpsEq for Euler<A> {
     }
 }
 
-// impl<A> Distribution<Euler<A>> for Standard
-//     where Standard: Distribution<A>,
-//         A: Angle {
-//     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Euler<A> {
+// impl<A: Angle + Rand> Rand for Euler<A> {
+//     #[inline]
+//     fn rand<R: Rng>(rng: &mut R) -> Euler<A> {
 //         Euler {
 //             x: rng.gen(),
 //             y: rng.gen(),
