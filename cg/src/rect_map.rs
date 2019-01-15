@@ -145,7 +145,7 @@ impl RectMap {
       } else {
         size.y
       };
-      if w == size.x && h == size.y {
+      if w == root.size.x && h == root.size.y {
         return false;
       }
       match root.content {
@@ -341,9 +341,13 @@ fn test11() {
   for i in 1..map.slab.len() + 1 {
     println!("test1, id:{}, node: {:?}", i, map.slab.get(i).unwrap());
   }
-    map.remove(7);
-  for i in 1..11 {
-    println!("test1, id:{}, node: {:?}", i, map.slab.get(i));
+    map.remove(10);
+  for i in 1..map.slab.len() + 1 {
+    println!("test2, id:{}, node: {:?}", i, map.slab.get(i));
+  }
+  map.extends(Vector2{x:600, y:600});
+  for i in 1..map.slab.len() + 1 {
+    println!("test3, id:{}, node: {:?}", i, map.slab.get(i));
   }
 
 }
