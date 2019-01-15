@@ -23,6 +23,7 @@ extern crate slab;
 
 pub mod color;
 pub mod octree;
+pub mod rect_map;
 
 pub use cgmath::*;
 pub use collision::*;
