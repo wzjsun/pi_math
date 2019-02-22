@@ -412,11 +412,6 @@ impl<S: BaseNum, T> AbNode<S, T> {
     }
   }
 }
-// impl<S: BaseNum, T: fmt::Debug> fmt::Debug for AbNode<S, T> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "aabb: {:?}, bind: {:?}, layer: {:?}, parent: {:?}, parent_child: {:?}, prev: {:?}, next: {:?}", self.aabb, self.bind, self.layer, self.parent, self.parent_child, self.prev, self.next)
-//     }
-// }
 
 // aabb是否相交
 #[inline]
