@@ -855,7 +855,7 @@ fn update<S: BaseNum, T>(
     return Some((old_p, old_c, prev, next, node.next));
   } else if node.parent == 1 {
     if node.layer > 0 {
-      // 边界物体移动
+      // 边界物体更新或未整理物体更新
       let root = unsafe { slab.get_unchecked_mut(1) };
       if intersects(&root.aabb, &node.aabb) {
         // 判断是否相交或包含
@@ -864,7 +864,7 @@ fn update<S: BaseNum, T>(
         node.prev = 0;
         if root.aabb.contains(&node.aabb) {
           set_tree_dirty(dirty, down(slab, adjust.1, deep, 1, node, id));
-          Some((1, 8, prev, next, node.next))
+          Some((1, node.parent_child, prev, next, node.next))
         } else {
           // 还是相交
           None
@@ -877,13 +877,14 @@ fn update<S: BaseNum, T>(
         node.parent = 0;
         node.next = outer.head;
         outer.push(id);
-        Some((1, 8, prev, next, node.next))
+        Some((1, node.parent_child, prev, next, node.next))
       }
     } else {
       // 大物件移动
       None
     }
   } else {
+    // 边界外物体更新
     let root = unsafe { slab.get_unchecked_mut(1) };
     if intersects(&root.aabb, &node.aabb) {
       // 判断是否相交或包含
@@ -1403,14 +1404,14 @@ fn collision_node<S: BaseNum, T, A>(
 
 #[test]
 fn test(){
-  let mut tree = Tree::new(Aabb3::new(Point3::new(0u32,0u32,0u32), Point3::new(100u32,100u32,1000000u32)),
+  let mut tree = Tree::new(Aabb3::new(Point3::new(0f32,0f32,0f32), Point3::new(1000f32,1000f32,1000f32)),
     0,
     0,
     0,
     0,
   );
-  for i in 0..6{
-      tree.add(Aabb3::new(Point3::new(0,0,0), Point3::new(1+i,1+i,1)), i+1);
+  for i in 0..9{
+      tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), i+1);
   }
 println!("loose:{:?} deep:{}", tree.loose, tree.deep);
   for i in 1..tree.oct_slab.len() + 1 {
@@ -1418,7 +1419,8 @@ println!("loose:{:?} deep:{}", tree.loose, tree.deep);
   }
   for i in 1..tree.ab_slab.len() + 1 {
     println!("00000, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
-  }
+   }
+   tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(0.0,0.0,1.0)));
   tree.collect();
   for i in 1..tree.oct_slab.len() + 1 {
     println!("000000 000000, id:{}, oct: {:?}", i, tree.oct_slab.get(i).unwrap());

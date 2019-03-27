@@ -2,7 +2,7 @@
 #![feature(rustc_private)]
 #![feature(const_vec_new)]
 #![feature(integer_atomics)]
-#![feature(custom_derive,asm,box_syntax,box_patterns)]
+#![feature(asm,box_syntax,box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(generators, generator_trait)]
 #![feature(associated_type_defaults)]
