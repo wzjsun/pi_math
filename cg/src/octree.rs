@@ -7,6 +7,30 @@ use {BaseNum, Point3, Vector3};
 
 use slab::Slab;
 
+/// aabb的查询函数的参数
+pub struct AbQueryArgs<S:BaseNum, T> {
+  aabb: Aabb3<S>,
+  result: Vec<T>,
+}
+impl<S: BaseNum, T:Clone> AbQueryArgs<S, T> {
+  pub fn new(aabb: Aabb3<S>) -> AbQueryArgs<S, T> {
+    AbQueryArgs{
+      aabb: aabb,
+      result: Vec::new(),
+    }
+  }
+  pub fn result(&mut self) -> Vec<T> {
+    mem::replace(&mut self.result, Vec::new())
+  }
+}
+
+/// aabb的ab查询函数, aabb的oct查询函数应该使用intersects
+pub fn ab_query_func<S:BaseNum, T:Clone>(arg: &mut AbQueryArgs<S, T>, _id: usize, aabb: &Aabb3<S>, bind: &T) {
+  if intersects(&arg.aabb, aabb) {
+    arg.result.push(bind.clone());
+  }
+}
+
 /// OctTree
 pub struct Tree<S: BaseNum, T> {
   oct_slab: Slab<OctNode<S>>,
@@ -247,8 +271,8 @@ impl<S: BaseNum, T> Tree<S, T> {
   // 查询空间内及相交的ab节点
   pub fn query<A, B>(
     &self,
-    oct_arg: &mut A,
-    oct_func: fn(arg: &mut A, aabb: &Aabb3<S>) -> bool,
+    oct_arg: &A,
+    oct_func: fn(arg: &A, aabb: &Aabb3<S>) -> bool,
     ab_arg: &mut B,
     ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>, bind: &T),
   ) {
@@ -1285,16 +1309,12 @@ fn query<S: BaseNum, T, A, B>(
   oct_slab: &Slab<OctNode<S>>,
   ab_slab: &Slab<AbNode<S, T>>,
   oct_id: usize,
-  oct_arg: &mut A,
-  oct_func: fn(arg: &mut A, aabb: &Aabb3<S>) -> bool,
+  oct_arg: &A,
+  oct_func: fn(arg: &A, aabb: &Aabb3<S>) -> bool,
   ab_arg: &mut B,
   ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>, bind: &T),
 ) {
-  let two = S::one() + S::one();
   let node = unsafe { oct_slab.get_unchecked(oct_id) };
-  if !oct_func(oct_arg, &node.aabb) {
-    return;
-  }
   let mut id = node.nodes.head;
   while id > 0 {
     let ab = unsafe { ab_slab.get_unchecked(id) };
@@ -1306,7 +1326,9 @@ fn query<S: BaseNum, T, A, B>(
     ($a:ident, $i:tt) => {
       match node.childs[$i] {
         ChildNode::Oct(oct, ref num) if *num > 0 => {
-          query(oct_slab, ab_slab, oct, oct_arg, oct_func, ab_arg, ab_func);
+          if oct_func(oct_arg, &$a) {
+            query(oct_slab, ab_slab, oct, oct_arg, oct_func, ab_arg, ab_func);
+          }
         }
         ChildNode::Ab(ref list) if list.head > 0 => {
           if oct_func(oct_arg, &$a) {
@@ -1325,6 +1347,7 @@ fn query<S: BaseNum, T, A, B>(
       }
     };
   }
+  let two = S::one() + S::one();
   let x1 = (node.aabb.min.x + node.aabb.max.x - node.loose.x) / two;
   let y1 = (node.aabb.min.y + node.aabb.max.y - node.loose.y) / two;
   let z1 = (node.aabb.min.z + node.aabb.max.z - node.loose.z) / two;
@@ -1467,5 +1490,9 @@ println!("loose:{:?} deep:{}", tree.loose, tree.deep);
   for i in 1..tree.ab_slab.len() + 1 {
     println!("test4, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
   }
-println!("outer:{:?}", tree.outer);
+  println!("outer:{:?}", tree.outer);
+  let aabb = Aabb3::new(Point3::new(0.05f32,0.05f32,0f32), Point3::new(0.05f32,0.05f32,1000f32));
+  let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
+  tree.query(&aabb, intersects, &mut args, ab_query_func);
+  println!("result:{:?}", args.result());
 }
