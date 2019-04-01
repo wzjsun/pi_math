@@ -7,6 +7,17 @@ use {BaseNum, Point3, Vector3};
 
 use slab::Slab;
 
+// aabb是否相交
+#[inline]
+pub fn intersects<S:BaseNum>(a: &Aabb3<S>, b: &Aabb3<S>) -> bool {
+  a.min.x < b.max.x
+  && a.max.x > b.min.x
+  && a.min.y < b.max.y
+  && a.max.y > b.min.y
+  && a.min.z < b.max.z
+  && a.max.z > b.min.z
+}
+
 /// aabb的查询函数的参数
 pub struct AbQueryArgs<S:BaseNum, T> {
   aabb: Aabb3<S>,
@@ -435,17 +446,6 @@ impl<S: BaseNum, T> AbNode<S, T> {
       next: 0,
     }
   }
-}
-
-// aabb是否相交
-#[inline]
-fn intersects<S:BaseNum>(a: &Aabb3<S>, b: &Aabb3<S>) -> bool {
-  a.min.x < b.max.x
-  && a.max.x > b.min.x
-  && a.min.y < b.max.y
-  && a.max.y > b.min.y
-  && a.min.z < b.max.z
-  && a.max.z > b.min.z
 }
 
 // 计算该aabb对应的层
