@@ -22,6 +22,7 @@ extern crate slab;
 
 
 pub mod color;
+pub mod query;
 pub mod octree;
 pub mod rect_map;
 

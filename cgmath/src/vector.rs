@@ -630,6 +630,10 @@ impl<S: BaseNum> Vector2<S> {
     pub fn unit_y() -> Vector2<S> {
         Vector2::new(S::zero(), S::one())
     }
+    #[inline]
+    pub fn cross(self, other: Vector2<S>) -> S {
+        (self.x * other.y) - (self.y * other.x)
+    }
 
     /// The perpendicular dot product of the vector and `other`.
     #[inline]
