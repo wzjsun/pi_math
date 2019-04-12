@@ -315,7 +315,7 @@ impl<S: BaseNum, T> Tree<S, T> {
   pub fn collision<A>(
     &self,
     id: usize,
-    limit_layer: usize,
+    _limit_layer: usize,
     arg: &mut A,
     func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, a_bind: &T, b_id: usize, b_aabb: &Aabb3<S>, b_bind: &T) -> bool,
   ) {
@@ -357,11 +357,11 @@ impl NodeList {
   }
   #[inline]
   pub fn remove<S: BaseNum, T>(&mut self, slab: &mut Slab<AbNode<S, T>>, prev: usize, next: usize) {
-    if prev == 0 {
-      self.head = next;
-    } else {
+    if prev > 0 {
       let node = unsafe { slab.get_unchecked_mut(prev) };
       node.next = next;
+    } else {
+      self.head = next;
     }
     if next > 0 {
       let node = unsafe { slab.get_unchecked_mut(next) };
@@ -885,10 +885,11 @@ fn update<S: BaseNum, T>(
         // 判断是否相交或包含
         let prev = node.prev;
         let next = node.next;
-        node.prev = 0;
         if root.aabb.contains(&node.aabb) {
+          node.prev = 0;
+          let child = node.parent_child;
           set_tree_dirty(dirty, down(slab, adjust.1, deep, 1, node, id));
-          Some((1, node.parent_child, prev, next, node.next))
+          Some((1, child, prev, next, node.next))
         } else {
           // 还是相交
           None
@@ -1408,24 +1409,51 @@ fn collision_list<S: BaseNum, T, A>(
 }
 
 // 和指定的节点进行碰撞
-fn collision_node<S: BaseNum, T, A>(
-  oct_slab: &Slab<OctNode<S>>,
-  ab_slab: &Slab<AbNode<S, T>>,
-  id: usize,
-  aabb: &Aabb3<S>,
-  bind: &T,
-  arg: &mut A,
-  func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, a_bind: &T, b_id: usize, b_aabb: &Aabb3<S>, b_bind: &T) -> bool,
-  parent: usize,
-  parent_child: usize,
-) {
+// fn collision_node<S: BaseNum, T, A>(
+//   oct_slab: &Slab<OctNode<S>>,
+//   ab_slab: &Slab<AbNode<S, T>>,
+//   id: usize,
+//   aabb: &Aabb3<S>,
+//   bind: &T,
+//   arg: &mut A,
+//   func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, a_bind: &T, b_id: usize, b_aabb: &Aabb3<S>, b_bind: &T) -> bool,
+//   parent: usize,
+//   parent_child: usize,
+// ) {
 
-}
-
-
+// }
 
 
 #[test]
+fn test1(){
+    let mut tree = Tree::new(Aabb3::new(Point3::new(-1024f32,-1024f32,-8388608f32), Point3::new(3072f32,3072f32,8388608f32)), 0, 0, 0, 0);
+  for i in 0..7{
+      tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), i+1);
+  }
+  for i in 1..tree.ab_slab.len() + 1 {
+    println!("00000, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
+   }
+    tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 800.0, 1.0)));
+    tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 800.0, 1.0)));
+    tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 800.0, 1.0)));
+    tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 800.0, 1.0)));
+
+    tree.update(5, Aabb3::new(Point3::new(0.0,800.0,0.0), Point3::new(1000.0, 1600.0, 1.0)));
+
+     tree.update(6, Aabb3::new(Point3::new(0.0,1600.0,0.0), Point3::new(1000.0, 2400.0, 1.0)));
+    tree.update(7, Aabb3::new(Point3::new(0.0,2400.0,0.0), Point3::new(1000.0, 3200.0, 1.0)));
+    for i in 1..tree.ab_slab.len() + 1 {
+    println!("22222, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
+   }
+    println!("oct-----, id:{}, oct: {:?}", 1, tree.oct_slab.get(1).unwrap());
+     println!("outer:{:?}", tree.outer);
+  let aabb = Aabb3::new(Point3::new(0.05f32,0.05f32,0f32), Point3::new(0.05f32,0.05f32,1000f32));
+  let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
+  tree.query(&aabb, intersects, &mut args, ab_query_func);
+  println!("result:{:?}", args.result());
+}
+
+//#[test]
 fn test(){
   let mut tree = Tree::new(Aabb3::new(Point3::new(0f32,0f32,0f32), Point3::new(1000f32,1000f32,1000f32)),
     0,

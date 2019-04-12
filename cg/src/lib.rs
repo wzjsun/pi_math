@@ -1,4 +1,3 @@
-#![feature(range_contains)]
 #![feature(rustc_private)]
 #![feature(const_vec_new)]
 #![feature(integer_atomics)]
