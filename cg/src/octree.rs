@@ -172,7 +172,6 @@ impl<S: BaseNum, T> Tree<S, T> {
   pub fn update(&mut self, id: usize, aabb: Aabb3<S>) -> bool {
     let r = match self.ab_slab.get_mut(id) {
       Some(node) => {
-        let old = node.layer;
         node.layer = calc_layer(&self.loose, &aabb.dim());
         node.aabb = aabb;
         update(
@@ -183,7 +182,6 @@ impl<S: BaseNum, T> Tree<S, T> {
           &mut self.dirty,
           id,
           node,
-          old,
         )
       }
       _ => return false,
@@ -204,7 +202,6 @@ impl<S: BaseNum, T> Tree<S, T> {
           &mut self.dirty,
           id,
           node,
-          node.layer,
         )
       }
       _ => return false,
@@ -515,62 +512,8 @@ fn check_contain<S: BaseNum>(
     return child;
   }
   if !parent.contains(node) {
-    return 8;
+    return 9;
   }
-  let a = Aabb3::new(Point3::new(x1, y1, z1), parent.max());
-  if a.contains(node) {
-    return 0;
-  }
-  let a = Aabb3::new(
-    Point3::new(parent.min.x, y1, z1),
-    Point3::new(x2, parent.max.y, parent.max.z),
-  );
-  if a.contains(node) {
-    return 1;
-  }
-  let a = Aabb3::new(
-    Point3::new(x1, parent.min.y, z1),
-    Point3::new(parent.max.x, y2, parent.max.z),
-  );
-  if a.contains(node) {
-    return 2;
-  }
-  let a = Aabb3::new(
-    Point3::new(parent.min.x, parent.min.y, z1),
-    Point3::new(x2, y2, parent.max.z),
-  );
-  if a.contains(node) {
-    return 4;
-  }
-  let a = Aabb3::new(
-    Point3::new(parent.min.x, y1, parent.min.z),
-    Point3::new(x2, parent.max.y, z2),
-  );
-  if a.contains(node) {
-    return 5;
-  }
-  let a = Aabb3::new(
-    Point3::new(x1, parent.min.y, parent.min.z),
-    Point3::new(parent.max.x, y2, z2),
-  );
-  if a.contains(node) {
-    return 6;
-  }
-  let a = Aabb3::new(parent.min(), Point3::new(x2, y2, z2));
-  if a.contains(node) {
-    return 7;
-  }
-  return 3;
-}
-// 检查节点所在的子节点
-fn get_child<S: BaseNum>(parent: &Aabb3<S>, loose: &Vector3<S>, node: &Aabb3<S>) -> usize {
-  let two = S::one() + S::one();
-  let x1 = (parent.min.x + parent.max.x - loose.x) / two;
-  let y1 = (parent.min.y + parent.max.y - loose.y) / two;
-  let z1 = (parent.min.z + parent.max.z - loose.z) / two;
-  let x2 = (parent.min.x + parent.max.x + loose.x) / two;
-  let y2 = (parent.min.y + parent.max.y + loose.y) / two;
-  let z2 = (parent.min.z + parent.max.z + loose.z) / two;
   let a = Aabb3::new(Point3::new(x1, y1, z1), parent.max());
   if a.contains(node) {
     return 0;
@@ -707,175 +650,67 @@ fn update<S: BaseNum, T>(
   dirty: &mut (Vec<Vec<usize>>, usize, usize),
   id: usize,
   node: &mut AbNode<S, T>,
-  old_layer: usize,
 ) -> Option<(usize, usize, usize, usize, usize)> {
-  if node.parent > 0 {
-    #[macro_use()]
-    macro_rules! move_child {
-      ($c:ident) => {
-        let parent = unsafe { slab.get_unchecked_mut(node.parent) };
-        // 获得新位置
-        let child = check_contain(&parent.aabb, &parent.loose, &node.aabb, $c);
-        if $c == child {
-          return None;
-        }
-        let prev = node.prev;
-        let next = node.next;
-        node.prev = 0;
-        if child < 8 {
-          // 移动到兄弟节点
-          match parent.childs[child] {
-            ChildNode::Oct(oct, ref mut num) => {
-              *num += 1;
-              let p = node.parent;
-              node.parent_child = 8;
-              set_tree_dirty(dirty, down(slab, adjust.1, deep, oct, node, id));
-              return Some((p, $c, prev, next, node.next));
-            }
-            ChildNode::Ab(ref mut list) => {
-              node.parent_child = child;
-              node.next = list.head;
-              list.push(id);
-              if list.len > adjust.1 && node.layer < deep {
-                set_dirty(&mut parent.dirty, child, parent.layer, id);
-              }
-              return Some((node.parent, $c, prev, next, node.next));
-            }
-          }
-        }
-        // 需要向上
-        node.parent_child = 8;
-        (parent.parent, parent.parent_child, $c, prev, next)
-      };
-    }
-    let (mut p, mut c, old_c, prev, next) = if node.layer <= old_layer {
-      let parent = unsafe { slab.get_unchecked_mut(node.parent) };
-      let c = node.parent_child;
-      if c < 8 {
-        // 获得新位置
-        let child = check_contain(&parent.aabb, &parent.loose, &node.aabb, c);
-        if c == child {
-          return None;
-        }
-        let prev = node.prev;
-        let next = node.next;
-        node.prev = 0;
-        if child < 8 {
-          // 移动到兄弟节点
-          match parent.childs[child] {
-            ChildNode::Oct(oct, ref mut num) => {
-              *num += 1;
-              let p = node.parent;
-              node.parent_child = 8;
-              set_tree_dirty(dirty, down(slab, adjust.1, deep, oct, node, id));
-              return Some((p, c, prev, next, node.next));
-            }
-            ChildNode::Ab(ref mut list) => {
-              node.parent_child = child;
-              node.next = list.head;
-              list.push(id);
-              if list.len > adjust.1 && node.layer < deep {
-                set_dirty(&mut parent.dirty, child, parent.layer, id);
-              }
-              return Some((node.parent, c, prev, next, node.next));
-            }
-          }
-        }
-        // 需要向上
-        node.parent_child = 8;
-        (parent.parent, parent.parent_child, c, prev, next)
-      } else {
-        // nodes上物体
-        if parent.aabb.contains(&node.aabb) {
-          if node.layer == old_layer {
-            return None;
-          }
-          // 变小的情况下要移动到子节点上
-          let prev = node.prev;
-          let next = node.next;
-          node.prev = 0;
-          let child = get_child(&parent.aabb, &parent.loose, &node.aabb);
-          match parent.childs[child] {
-            ChildNode::Oct(oct, ref mut num) => {
-              *num += 1;
-              let p = node.parent;
-              set_tree_dirty(dirty, down(slab, adjust.1, deep, oct, node, id));
-              return Some((p, 8, prev, next, node.next));
-            }
-            ChildNode::Ab(ref mut list) => {
-              node.parent_child = child;
-              node.next = list.head;
-              list.push(id);
-              if list.len > adjust.1 && node.layer < deep {
-                set_dirty(&mut parent.dirty, child, parent.layer, id);
-              }
-              return Some((node.parent, 8, prev, next, node.next));
-            }
-          }
-        }
-        let prev = node.prev;
-        let next = node.next;
-        node.prev = 0;
-        (parent.parent, parent.parent_child, 8, prev, next)
+  let old_p = node.parent;
+  if old_p > 0 {
+    let old_c = node.parent_child;
+    let mut parent = unsafe { slab.get_unchecked_mut(old_p) };
+    if node.layer > parent.layer {
+      // ab节点能在当前Oct节点的容纳范围
+      // 获得新位置
+      let child = check_contain(&parent.aabb, &parent.loose, &node.aabb, old_c);
+      if old_c == child {
+        return None;
       }
+      if child < 8 {
+        let prev = node.prev;
+        let next = node.next;
+        node.prev = 0;
+        // 移动到兄弟节点
+        match parent.childs[child] {
+          ChildNode::Oct(oct, ref mut num) => {
+            *num += 1;
+            node.parent_child = 8;
+            set_tree_dirty(dirty, down(slab, adjust.1, deep, oct, node, id));
+            return Some((old_p, old_c, prev, next, node.next));
+          }
+          ChildNode::Ab(ref mut list) => {
+            node.parent_child = child;
+            node.next = list.head;
+            list.push(id);
+            if list.len > adjust.1 && node.layer < deep {
+              set_dirty(&mut parent.dirty, child, parent.layer, id);
+            }
+            return Some((old_p, old_c, prev, next, node.next));
+          }
+        }
+      }
+      // 需要向上
+    } else if node.layer == parent.layer {
+      if parent.aabb.contains(&node.aabb) {
+        if old_c == 8 {
+          return None;
+        }
+        let prev = node.prev;
+        let next = node.next;
+        // 从child 移到 nodes
+        node.parent_child = 8;
+        node.next = parent.nodes.head;
+        parent.nodes.push(id);
+        return Some((old_p, old_c, prev, next, node.next));
+      }
+      // 在当前节点外
     } else {
-      let parent = unsafe { slab.get_unchecked_mut(node.parent) };
-      let c = node.parent_child;
-      if c < 8 {
-        if node.layer < parent.layer {
-          // 还是小于当前节点的容纳范围
-          // 获得新位置
-          let child = check_contain(&parent.aabb, &parent.loose, &node.aabb, c);
-          if c == child {
-            return None;
-          }
-          let prev = node.prev;
-          let next = node.next;
-          node.prev = 0;
-          if child < 8 {
-            // 移动到兄弟节点
-            match parent.childs[child] {
-              ChildNode::Oct(oct, ref mut num) => {
-                *num += 1;
-                let p = node.parent;
-                node.parent_child = 8;
-                set_tree_dirty(dirty, down(slab, adjust.1, deep, oct, node, id));
-                return Some((p, c, prev, next, node.next));
-              }
-              ChildNode::Ab(ref mut list) => {
-                node.parent_child = child;
-                node.next = list.head;
-                list.push(id);
-                if list.len > adjust.1 && node.layer < deep {
-                  set_dirty(&mut parent.dirty, child, parent.layer, id);
-                }
-                return Some((node.parent, c, prev, next, node.next));
-              }
-            }
-          }
-          // 需要向上
-          node.parent_child = 8;
-          (parent.parent, parent.parent_child, c, prev, next)
-        } else {
-          // 比当前节点大
-          let prev = node.prev;
-          let next = node.next;
-          node.prev = 0;
-          node.parent_child = 8;
-          (parent.parent, parent.parent_child, node.parent_child, prev, next)
-        }
-      } else {
-        // 比当前节点大
-        let prev = node.prev;
-        let next = node.next;
-        node.prev = 0;
-        (parent.parent, parent.parent_child, 8, prev, next)
-      }
+      // 比当前节点大
     };
-    // 向上移动
-    let old_p = node.parent;
-    let mut parent;
+    let prev = node.prev;
+    let next = node.next;
+    node.prev = 0;
+    node.parent_child = 8;
     if old_p > 1 {
+      // 向上移动
+      let mut p = parent.parent;
+      let mut c = parent.parent_child;
       loop {
         parent = unsafe { slab.get_unchecked_mut(p) };
         match parent.childs[c] {
@@ -890,7 +725,7 @@ fn update<S: BaseNum, T>(
           }
           _ => panic!("invalid state"),
         }
-        if parent.layer < node.layer && parent.aabb.contains(&node.aabb) {
+        if parent.layer <= node.layer && parent.aabb.contains(&node.aabb) {
           set_tree_dirty(dirty, down(slab, adjust.1, deep, p, node, id));
           return Some((old_p, old_c, prev, next, node.next));
         }
@@ -900,11 +735,12 @@ fn update<S: BaseNum, T>(
           break;
         }
       }
-    }else{
-      parent = unsafe { slab.get_unchecked_mut(1) };
-    };
+    }
     // 判断根节点是否相交
     if intersects(&parent.aabb, &node.aabb) {
+      if old_p == 1 && old_c == 8 {
+        return None
+      }
       // 相交的放在root的nodes上
       node.parent = 1;
       node.next = parent.nodes.head;
@@ -1429,8 +1265,10 @@ fn collision_list<S: BaseNum, T, A>(
 // }
 
 
-#[test]
+//#[test]
 fn test1(){
+  println!("test1-----------------------------------------");
+
     let mut tree = Tree::new(Aabb3::new(Point3::new(-1024f32,-1024f32,-4194304f32), Point3::new(3072f32,3072f32,4194304f32)), 0, 0, 0, 0);
   for i in 0..1{
       tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), i+1);
@@ -1442,7 +1280,7 @@ fn test1(){
   for i in 1..tree.ab_slab.len() + 1 {
     println!("00000, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
    }
-  //tree.collect();
+  tree.collect();
   for i in 1..tree.ab_slab.len() + 1 {
     println!("00000, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
    }
@@ -1484,11 +1322,12 @@ fn test1(){
   let aabb = Aabb3::new(Point3::new(500f32,500f32,-4194304f32), Point3::new(500f32,500f32,4194304f32));
   let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
   tree.query(&aabb, intersects, &mut args, ab_query_func);
-  println!("result:{:?}", args.result());
+  assert_eq!(args.result(), [1, 3, 4]);
 }
 
 #[test]
-fn test(){
+fn test2(){
+  println!("test2-----------------------------------------");
   let mut tree = Tree::new(Aabb3::new(Point3::new(0f32,0f32,0f32), Point3::new(1000f32,1000f32,1000f32)),
     0,
     0,
@@ -1513,6 +1352,7 @@ println!("loose:{:?} deep:{}", tree.loose, tree.deep);
   for i in 1..tree.ab_slab.len() + 1 {
     println!("000000 000000, id:{}, ab: {:?}", i, tree.ab_slab.get(i).unwrap());
   }
+    println!("tree -new ------------------------------------------");
   let mut tree = Tree::new(
     Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(10.0,10.0,10.0)),
     0,
@@ -1556,5 +1396,5 @@ println!("loose:{:?} deep:{}", tree.loose, tree.deep);
   let aabb = Aabb3::new(Point3::new(0.05f32,0.05f32,0f32), Point3::new(0.05f32,0.05f32,1000f32));
   let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
   tree.query(&aabb, intersects, &mut args, ab_query_func);
-  println!("result:{:?}", args.result());
+  assert_eq!(args.result(), [1, 2, 3]);
 }
