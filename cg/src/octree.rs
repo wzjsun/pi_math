@@ -693,6 +693,7 @@ if old_p > 0 {
 		}
 		let prev = node.prev;
 		let next = node.next;
+		node.prev = 0;
 		// 从child 移到 nodes
 		node.parent_child = 8;
 		node.next = parent.nodes.head;
@@ -717,7 +718,7 @@ if old_p > 0 {
 		ChildNode::Oct(_, ref mut num) => {
 			*num -= 1;
 			if *num < adjust.0 {
-			let d = set_dirty(&mut parent.dirty, c, node.layer, p);
+			let d = set_dirty(&mut parent.dirty, c, parent.layer, p);
 			if d.1 > 0 {
 				set_tree_dirty(dirty, d);
 			}
@@ -916,10 +917,15 @@ deep: usize,
 parent_id: usize,
 ) {
 let (dirty, childs, ab, loose, layer) = {
-	let parent = unsafe { oct_slab.get_unchecked_mut(parent_id) };
+	let parent = match oct_slab.get_mut(parent_id) {
+		Some(oct) => {
+			oct
+		},
+		_ => return
+	};
 	let dirty = parent.dirty;
 	if parent.dirty == 0 {
-	return;
+		return;
 	}
 	parent.dirty = 0;
 	(dirty, parent.childs.clone(), parent.aabb.clone(), parent.loose.clone(), parent.layer)
@@ -932,7 +938,6 @@ for i in 0..8 {
 		if num > 0 {
 			shrink(oct_slab, ab_slab, parent_id, i, oct, &mut list);
 		}
-		oct_slab.remove(oct);
 		let parent = unsafe { oct_slab.get_unchecked_mut(parent_id) };
 		parent.childs[i] = ChildNode::Ab(list);
 		}
@@ -948,14 +953,14 @@ for i in 0..8 {
 }
 // 收缩OctNode
 fn shrink<S: BaseNum, T>(
-oct_slab: &Slab<OctNode<S>>,
+oct_slab: &mut Slab<OctNode<S>>,
 ab_slab: &mut Slab<AbNode<S, T>>,
 parent: usize,
 parent_child: usize,
 oct_id: usize,
 result: &mut NodeList,
 ) {
-let node = unsafe { oct_slab.get_unchecked(oct_id) };
+let node =oct_slab.remove(oct_id);
 if node.nodes.len > 0 {
 	shrink_merge(ab_slab, parent, parent_child, &node.nodes, result);
 }
@@ -1429,7 +1434,6 @@ fn test3(){
 	tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
 	tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
 	tree.collect();
-
 	tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 350.0, 1.0)));
 	tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(800.0, 175.0, 1.0)));
 	tree.update(5, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(640.0, 140.0, 1.0)));
@@ -1439,6 +1443,32 @@ fn test3(){
 	tree.update(9, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1440.0, 140.0, 1.0)));
 	tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
 	tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
+	tree.query(&aabb, intersects, &mut args, ab_query_func);
+	tree.remove(7);
+	tree.remove(6);
+	tree.remove(5);
+
+
+	tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.collect();
+	tree.update(5, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(640.0, 140.0, 1.0)));
+	tree.update(6, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(512.0, 112.0, 1.0)));
+	tree.update(7, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(410.0, 90.0, 1.0)));
+	tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
+	tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
+	tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 350.0, 1.0)));
+	tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(800.0, 175.0, 1.0)));
+	tree.update(8, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1600.0, 175.0, 1.0)));
+	tree.update(9, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1440.0, 140.0, 1.0)));
+for i in 1..tree.oct_slab.len() + 1 {
+	println!("test||||||, id:{}, oct: {:?}", i, tree.oct_slab.get(i));
+}
+for i in 1..tree.ab_slab.len() + 1 {
+	println!("test----------, id:{}, ab: {:?}", i, tree.ab_slab.get(i));
+}
+println!("-------------------------------------------------------dirtys:{:?}", tree.dirty);
 	tree.query(&aabb, intersects, &mut args, ab_query_func);
 
 	tree.remove(7);
@@ -1451,34 +1481,22 @@ fn test3(){
 	tree.collect();
 
 	tree.update(5, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(640.0, 140.0, 1.0)));
-	// tree.update(6, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(512.0, 112.0, 1.0)));
-	// tree.update(7, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(410.0, 90.0, 1.0)));
-	// tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
-	// tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
-	// tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 350.0, 1.0)));
-	// tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(800.0, 175.0, 1.0)));
-	// tree.update(8, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1600.0, 175.0, 1.0)));
-	// tree.update(9, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1440.0, 140.0, 1.0)));
-	// tree.query(&aabb, intersects, &mut args, ab_query_func);
-
-	// tree.remove(7);
-	// tree.remove(6);
-	// tree.remove(5);
-
-	// tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
-	// tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
-	// tree.add(Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
-	// tree.collect();
-
-	// tree.update(5, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(640.0, 140.0, 1.0)));
-	// tree.update(6, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(512.0, 112.0, 1.0)));
-	// tree.update(7, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(410.0, 90.0, 1.0)));
-	// tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
-	// tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
-	// tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 350.0, 1.0)));
-	// tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(800.0, 175.0, 1.0)));
-	// tree.update(8, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1600.0, 175.0, 1.0)));
-	// tree.update(9, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1440.0, 140.0, 1.0)));
-	// tree.query(&aabb, intersects, &mut args, ab_query_func);
+	tree.update(6, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(512.0, 112.0, 1.0)));
+	tree.update(7, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(410.0, 90.0, 1.0)));
+	tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
+	tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
+	tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 350.0, 1.0)));
+	tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(800.0, 175.0, 1.0)));
+	tree.update(8, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1600.0, 175.0, 1.0)));
+	tree.update(9, Aabb3::new(Point3::new(800.0,0.0,0.0), Point3::new(1440.0, 140.0, 1.0)));
+	tree.query(&aabb, intersects, &mut args, ab_query_func);
+for i in 1..tree.oct_slab.len() + 1 {
+	println!("test||||||, id:{}, oct: {:?}", i, tree.oct_slab.get(i));
+}
+for i in 1..tree.ab_slab.len() + 10 {
+	println!("test----------, id:{}, ab: {:?}", i, tree.ab_slab.get(i));
+}
+println!("-------------------------------------------------------outer:{:?}", tree.outer);
+	
 }
 
