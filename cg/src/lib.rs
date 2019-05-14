@@ -17,6 +17,7 @@ extern crate core;
 
 extern crate cgmath;
 extern crate collision;
+extern crate map;
 extern crate slab;
 
 
