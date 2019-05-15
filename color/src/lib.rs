@@ -1,4 +1,8 @@
-use BaseFloat;
+extern crate core;
+extern crate cgmath;
+
+
+use cgmath::BaseFloat;
 
 /// A RGBA `Color`. Each color component is a floating point value
 /// with a range from 0 to 1.

@@ -5,7 +5,11 @@
 // 为了更好的利用空间，需要指定对齐大小，推荐按16来对齐。
 // 如果需要在分配的矩形周围留有一个空白，请自行维护。
 
-use {Point2, Vector2};
+extern crate cgmath;
+
+extern crate slab;
+
+use cgmath::{Point2, Vector2};
 
 use slab::Slab;
 

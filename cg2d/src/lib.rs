@@ -1,5 +1,7 @@
 
-use {BaseNum, Point2, Vector2};
+extern crate cgmath;
+
+use cgmath::{BaseNum, Point2, Vector2};
 
 pub enum InnOuter {
     Inner,

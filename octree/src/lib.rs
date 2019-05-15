@@ -1,9 +1,15 @@
 //! 高性能的松散八叉树
+extern crate core;
 
+extern crate cgmath;
+extern crate collision;
+extern crate map;
+extern crate slab;
 use std::mem;
 
-use {Aabb, Aabb3, Contains};
-use {BaseNum, Point3, Vector3};
+
+use collision::{Aabb, Aabb3, Contains};
+use cgmath::{BaseNum, Point3, Vector3};
 
 use map::{vecmap::VecMap};
 use slab::Slab;

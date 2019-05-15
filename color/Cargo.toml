@@ -1,12 +1,9 @@
 [package]
-name = "cg"
+name = "color"
 version = "0.1.0"
 authors = ["yineng <dev@dev.com>"]
 
 [dependencies]
 # cgmath = { version = "0.16.1" }
 cgmath = { path = "../cgmath" }
-collision = { path = "../collision" }
-map = { path = "../../pi_lib/map" }
-slab = { path = "../../pi_lib/slab" }
 
