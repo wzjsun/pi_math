@@ -20,33 +20,33 @@ a.min.x < b.max.x
 }
 
 /// aabb的查询函数的参数
-pub struct AbQueryArgs<S:BaseNum> {
+pub struct AbQueryArgs<S:BaseNum, T> {
 aabb: Aabb3<S>,
-result: Vec<usize>,
+result: Vec<T>,
 }
-impl<S: BaseNum> AbQueryArgs<S> {
-pub fn new(aabb: Aabb3<S>) -> AbQueryArgs<S> {
+impl<S: BaseNum, T:Clone> AbQueryArgs<S, T> {
+pub fn new(aabb: Aabb3<S>) -> AbQueryArgs<S, T> {
 	AbQueryArgs{
 	aabb: aabb,
 	result: Vec::new(),
 	}
 }
-pub fn result(&mut self) -> Vec<usize> {
+pub fn result(&mut self) -> Vec<T> {
 	mem::replace(&mut self.result, Vec::new())
 }
 }
 
 /// aabb的ab查询函数, aabb的oct查询函数应该使用intersects
-pub fn ab_query_func<S:BaseNum>(arg: &mut AbQueryArgs<S>, id: usize, aabb: &Aabb3<S>) {
+pub fn ab_query_func<S:BaseNum, T:Clone>(arg: &mut AbQueryArgs<S, T>, _id: usize, aabb: &Aabb3<S>, bind: &T) {
 if intersects(&arg.aabb, aabb) {
-	arg.result.push(id);
+	arg.result.push(bind.clone());
 }
 }
 
 /// OctTree
-pub struct Tree<S: BaseNum> {
+pub struct Tree<S: BaseNum, T> {
 oct_slab: Slab<OctNode<S>>,
-ab_map: VecMap<AbNode<S>>,
+ab_map: VecMap<AbNode<S, T>>,
 loose_ratio: usize,     //松散系数，0-10000之间， 默认3000
 adjust: (usize, usize), //小于min，节点收缩; 大于max，节点分化。默认(4, 5)
 deep: usize,            // 最大深度
@@ -55,14 +55,14 @@ outer: NodeList, // 和根节点不相交的ab节点列表，及节点数量。 
 dirty: (Vec<Vec<usize>>, usize, usize), // 脏的OctNode节点, 及脏节点数量，及脏节点的起始层
 }
 
-impl<S: BaseNum> Tree<S> {
+impl<S: BaseNum, T> Tree<S, T> {
 pub fn new(
 	root: Aabb3<S>,
 	loose_ratio: usize,
 	adjust_min: usize,
 	adjust_max: usize,
 	deep: usize,
-) -> Tree<S> {
+) -> Tree<S, T> {
 	let d = root.dim();
 	let loose_ratio = if loose_ratio == 0 { LOOSE } else { loose_ratio };
 	let loose_ratio = if loose_ratio > LOOSE_MAX { LOOSE_MAX } else { loose_ratio };
@@ -128,9 +128,9 @@ pub fn get_layer(&self, aabb: &Aabb3<S>) -> usize {
 	calc_layer(&self.loose, &aabb.dim())
 }
 // 添加一个aabb及其绑定
-pub fn add(&mut self, id: usize, aabb: Aabb3<S>) {
+pub fn add(&mut self, id: usize, aabb: Aabb3<S>, bind: T) {
 	let layer = calc_layer(&self.loose, &aabb.dim());
-	match self.ab_map.insert(id, AbNode::new(aabb, layer)) {
+	match self.ab_map.insert(id, AbNode::new(aabb, bind, layer)) {
 		Some(_) => panic!("duplicate id: {}", id),
 		_ => ()
 	}
@@ -160,15 +160,16 @@ pub fn add(&mut self, id: usize, aabb: Aabb3<S>) {
 	}
 }
 // 获取指定id的aabb及其绑定
-pub fn get(&self, id: usize) -> Option<&Aabb3<S>> {
+pub fn get(&self, id: usize) -> Option<(&Aabb3<S>, &T)> {
 	match self.ab_map.get(id) {
-	Some(node) => Some(&node.aabb),
+	Some(node) => Some((&node.aabb, &node.bind)),
 	_ => None,
 	}
 }
 // 获取指定id的aabb及其绑定
-pub unsafe fn get_unchecked(&self, id: usize) -> &Aabb3<S> {
-	&self.ab_map.get_unchecked(id).aabb
+pub unsafe fn get_unchecked(&self, id: usize) -> (&Aabb3<S>, &T) {
+	let node = self.ab_map.get_unchecked(id);
+	(&node.aabb, &node.bind)
 }
 // 更新指定id的aabb
 pub fn update(&mut self, id: usize, aabb: Aabb3<S>) -> bool {
@@ -211,8 +212,18 @@ pub fn shift(&mut self, id: usize, distance: Vector3<S>) -> bool {
 	remove_add(self, id, r);
 	true
 }
+// 更新指定id的绑定
+pub fn update_bind(&mut self, id: usize, bind: T) -> bool {
+	match self.ab_map.get_mut(id) {
+	Some(node) => {
+		node.bind = bind;
+		true
+	}
+	_ => false,
+	}
+}
 // 移除指定id的aabb及其绑定
-pub fn remove(&mut self, id: usize) -> Option<Aabb3<S>> {
+pub fn remove(&mut self, id: usize) -> Option<(Aabb3<S>, T)> {
 	let node = match self.ab_map.remove(id) {
 		Some(n) => n,
 		_ => return None
@@ -237,7 +248,7 @@ pub fn remove(&mut self, id: usize) -> Option<Aabb3<S>> {
 	// 表示在outer上
 	self.outer.remove(&mut self.ab_map, node.prev, node.next);
 	}
-	Some(node.aabb)
+	Some((node.aabb, node.bind))
 }
 // 整理方法，只有整理方法才会创建或销毁OctNode
 pub fn collect(&mut self) {
@@ -277,7 +288,7 @@ pub fn query<A, B>(
 	oct_arg: &A,
 	oct_func: fn(arg: &A, aabb: &Aabb3<S>) -> bool,
 	ab_arg: &mut B,
-	ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>),
+	ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>, bind: &T),
 ) {
 	query(
 	&self.oct_slab,
@@ -293,12 +304,12 @@ pub fn query<A, B>(
 pub fn query_outer<B>(
 	&self,
 	arg: &mut B,
-	func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>),
+	func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>, bind: &T),
 ) {
 	let mut id = self.outer.head;
 	while id > 0 {
 	let ab = unsafe { self.ab_map.get_unchecked(id) };
-	func(arg, id, &ab.aabb);
+	func(arg, id, &ab.aabb, &ab.bind);
 	id = ab.next;
 	}
 }
@@ -309,7 +320,7 @@ pub fn collision<A>(
 	id: usize,
 	_limit_layer: usize,
 	arg: &mut A,
-	func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, b_id: usize, b_aabb: &Aabb3<S>) -> bool,
+	func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, a_bind: &T, b_id: usize, b_aabb: &Aabb3<S>, b_bind: &T) -> bool,
 ) {
 	let a = match self.ab_map.get(id) {
 	Some(ab) => ab,
@@ -317,13 +328,13 @@ pub fn collision<A>(
 	};
 	// 先判断root.nodes是否有节点，如果有则遍历root的nodes
 	let node = unsafe { self.oct_slab.get_unchecked(1) };
-	collision_list(&self.ab_map, id, &a.aabb, arg, func, node.nodes.head);
+	collision_list(&self.ab_map, id, &a.aabb, &a.bind, arg, func, node.nodes.head);
 	// 和同列表节点碰撞
-	collision_list(&self.ab_map, id, &a.aabb, arg, func, a.next);
+	collision_list(&self.ab_map, id, &a.aabb, &a.bind, arg, func, a.next);
 	let mut prev = a.prev;
 	while prev > 0 {
 	let b = unsafe { self.ab_map.get_unchecked(prev) };
-	func(arg, id, &a.aabb, prev, &b.aabb);
+	func(arg, id, &a.aabb, &a.bind, prev, &b.aabb, &b.bind);
 	prev = b.prev;
 	}
 	
@@ -348,7 +359,7 @@ pub fn push(&mut self, id: usize) {
 	self.len += 1;
 }
 #[inline]
-pub fn remove<S: BaseNum>(&mut self, map: &mut VecMap<AbNode<S>>, prev: usize, next: usize) {
+pub fn remove<S: BaseNum, T>(&mut self, map: &mut VecMap<AbNode<S, T>>, prev: usize, next: usize) {
 	if prev > 0 {
 	let node = unsafe { map.get_unchecked_mut(prev) };
 	node.next = next;
@@ -417,18 +428,20 @@ Ab(NodeList),      // ab节点列表，及节点数量
 }
 
 #[derive(Debug, Clone)]
-struct AbNode<S: BaseNum> {
+struct AbNode<S: BaseNum, T> {
 aabb: Aabb3<S>,      // 包围盒
+bind: T,             // 绑定
 layer: usize,        // 表示第几层， 根据aabb大小，决定最低为第几层
 parent: usize,       // 父八叉节点
 parent_child: usize, // 父八叉节点所在的子八叉节点， 8表示不在子八叉节点上
 prev: usize,         // 前ab节点
 next: usize,         // 后ab节点
 }
-impl<S: BaseNum> AbNode<S> {
-pub fn new(aabb: Aabb3<S>, layer: usize) -> AbNode<S> {
+impl<S: BaseNum, T> AbNode<S, T> {
+pub fn new(aabb: Aabb3<S>, bind: T, layer: usize) -> AbNode<S, T> {
 	AbNode {
 	aabb: aabb,
+	bind: bind,
 	layer: layer,
 	parent: 0,
 	parent_child: 8,
@@ -553,12 +566,12 @@ if a.contains(node) {
 return 3;
 }
 // ab节点下降
-fn down<S: BaseNum>(
+fn down<S: BaseNum, T>(
 slab: &mut Slab<OctNode<S>>,
 adjust: usize,
 deep: usize,
 oct_id: usize,
-node: &mut AbNode<S>,
+node: &mut AbNode<S, T>,
 id: usize,
 ) -> (usize, usize) {
 let parent = unsafe { slab.get_unchecked_mut(oct_id) };
@@ -635,14 +648,14 @@ child_macro!(a, 7);
 (0, 0)
 }
 // 更新aabb
-fn update<S: BaseNum>(
+fn update<S: BaseNum, T>(
 slab: &mut Slab<OctNode<S>>,
 adjust: &(usize, usize),
 deep: usize,
 outer: &mut NodeList,
 dirty: &mut (Vec<Vec<usize>>, usize, usize),
 id: usize,
-node: &mut AbNode<S>,
+node: &mut AbNode<S, T>,
 ) -> Option<(usize, usize, usize, usize, usize)> {
 let old_p = node.parent;
 if old_p > 0 {
@@ -770,8 +783,8 @@ if old_p > 0 {
 }
 }
 // 从NodeList中移除，并可能添加
-pub fn remove_add<S: BaseNum>(
-tree: &mut Tree<S>,
+pub fn remove_add<S: BaseNum, T>(
+tree: &mut Tree<S, T>,
 id: usize,
 r: Option<(usize, usize, usize, usize, usize)>,
 ) {
@@ -902,9 +915,9 @@ return OctNode::new(a, loose / two, parent_id, child, layer+1);
 }
 
 // 整理方法，只有整理方法才会创建或销毁OctNode
-fn collect<S: BaseNum>(
+fn collect<S: BaseNum, T>(
 oct_slab: &mut Slab<OctNode<S>>,
-ab_map: &mut VecMap<AbNode<S>>,
+ab_map: &mut VecMap<AbNode<S, T>>,
 adjust: &(usize, usize),
 deep: usize,
 parent_id: usize,
@@ -945,9 +958,9 @@ for i in 0..8 {
 }
 }
 // 收缩OctNode
-fn shrink<S: BaseNum>(
+fn shrink<S: BaseNum, T>(
 oct_slab: &mut Slab<OctNode<S>>,
-ab_map: &mut VecMap<AbNode<S>>,
+ab_map: &mut VecMap<AbNode<S, T>>,
 parent: usize,
 parent_child: usize,
 oct_id: usize,
@@ -982,8 +995,8 @@ child_macro!(7);
 }
 // 合并ab列表到结果列表中
 #[inline]
-fn shrink_merge<S: BaseNum>(
-ab_map: &mut VecMap<AbNode<S>>,
+fn shrink_merge<S: BaseNum, T>(
+ab_map: &mut VecMap<AbNode<S, T>>,
 parent: usize,
 parent_child: usize,
 list: &NodeList,
@@ -1011,9 +1024,9 @@ if old > 0 {
 
 // 分裂出OctNode
 #[inline]
-fn split<S: BaseNum>(
+fn split<S: BaseNum, T>(
 oct_slab: &mut Slab<OctNode<S>>,
-ab_map: &mut VecMap<AbNode<S>>,
+ab_map: &mut VecMap<AbNode<S, T>>,
 adjust: &(usize, usize),
 deep: usize,
 list: &NodeList,
@@ -1032,8 +1045,8 @@ if split_down(ab_map, adjust.1, deep, oct, oct_id, list) > 0 {
 oct_id
 }
 // 将ab节点列表放到分裂出来的八叉节点上
-fn split_down<S: BaseNum>(
-map: &mut VecMap<AbNode<S>>,
+fn split_down<S: BaseNum, T>(
+map: &mut VecMap<AbNode<S, T>>,
 adjust: usize,
 deep: usize,
 parent: &mut OctNode<S>,
@@ -1127,8 +1140,8 @@ parent.dirty
 }
 // 修复prev
 #[inline]
-fn fix_prev<S: BaseNum>(
-map: &mut VecMap<AbNode<S>>,
+fn fix_prev<S: BaseNum, T>(
+map: &mut VecMap<AbNode<S, T>>,
 mut head: usize,
 ) {
 if head == 0 {
@@ -1145,20 +1158,20 @@ while next > 0 {
 }
 
 // 查询空间内及相交的ab节点
-fn query<S: BaseNum, A, B>(
+fn query<S: BaseNum, T, A, B>(
 oct_slab: &Slab<OctNode<S>>,
-ab_map: &VecMap<AbNode<S>>,
+ab_map: &VecMap<AbNode<S, T>>,
 oct_id: usize,
 oct_arg: &A,
 oct_func: fn(arg: &A, aabb: &Aabb3<S>) -> bool,
 ab_arg: &mut B,
-ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>),
+ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>, bind: &T),
 ) {
 let node = unsafe { oct_slab.get_unchecked(oct_id) };
 let mut id = node.nodes.head;
 while id > 0 {
 	let ab = unsafe { ab_map.get_unchecked(id) };
-	ab_func(ab_arg, id, &ab.aabb);
+	ab_func(ab_arg, id, &ab.aabb, &ab.bind);
 	id = ab.next;
 }
 #[macro_use()]
@@ -1175,7 +1188,7 @@ macro_rules! child_macro {
 			let mut id = list.head;
 			loop {
 			let ab = unsafe { ab_map.get_unchecked(id) };
-			ab_func(ab_arg, id, &ab.aabb);
+			ab_func(ab_arg, id, &ab.aabb, &ab.bind);
 			id = ab.next;
 			if id == 0 {
 				break;
@@ -1231,25 +1244,26 @@ child_macro!(a, 7);
 }
 
 // 和指定的列表进行碰撞
-fn collision_list<S: BaseNum, A>(
-map: &VecMap<AbNode<S>>,
+fn collision_list<S: BaseNum, T, A>(
+map: &VecMap<AbNode<S, T>>,
 id: usize,
 aabb: &Aabb3<S>,
+bind: &T,
 arg: &mut A,
-func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, b_id: usize, b_aabb: &Aabb3<S>) -> bool,
+func: fn(arg: &mut A, a_id: usize, a_aabb: &Aabb3<S>, a_bind: &T, b_id: usize, b_aabb: &Aabb3<S>, b_bind: &T) -> bool,
 mut head: usize,
 ) {
 while head > 0 {
 	let b = unsafe { map.get_unchecked(head) };
-	func(arg, id, aabb, head, &b.aabb);
+	func(arg, id, aabb, bind, head, &b.aabb, &b.bind);
 	head = b.next;
 }
 }
 
 // 和指定的节点进行碰撞
-// fn collision_node<S: BaseNum, A>(
+// fn collision_node<S: BaseNum, T, A>(
 //   oct_slab: &Slab<OctNode<S>>,
-//   ab_map: &Slab<AbNode<S>>,
+//   ab_map: &Slab<AbNode<S, T>>,
 //   id: usize,
 //   aabb: &Aabb3<S>,
 //   bind: &T,
@@ -1262,13 +1276,13 @@ while head > 0 {
 // }
 
 
-#[test]
+//#[test]
 fn test1(){
 println!("test1-----------------------------------------");
 
 	let mut tree = Tree::new(Aabb3::new(Point3::new(-1024f32,-1024f32,-4194304f32), Point3::new(3072f32,3072f32,4194304f32)), 0, 0, 0, 0);
 for i in 0..1{
-	tree.add(i+1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(i+1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), i+1);
 }
 for i in 1..tree.ab_map.len() + 1 {
 	println!("00000, id:{}, ab: {:?}", i, tree.ab_map.get(i).unwrap());
@@ -1282,7 +1296,7 @@ for i in 1..tree.ab_map.len() + 1 {
 	println!("00000, id:{}, ab: {:?}", i, tree.ab_map.get(i).unwrap());
 }
 for i in 0..5{
-	tree.add(i + 2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(i + 1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), i+3);
 }
 for i in 1..tree.ab_map.len() + 1 {
 	println!("00001, id:{}, ab: {:?}", i, tree.ab_map.get(i).unwrap());
@@ -1317,7 +1331,7 @@ for i in 1..tree.oct_slab.len() + 1 {
 }
 	println!("outer:{:?}", tree.outer);
 let aabb = Aabb3::new(Point3::new(500f32,500f32,-4194304f32), Point3::new(500f32,500f32,4194304f32));
-let mut args:AbQueryArgs<f32> = AbQueryArgs::new(aabb.clone());
+let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
 tree.query(&aabb, intersects, &mut args, ab_query_func);
 assert_eq!(args.result(), [1, 3, 4]);
 }
@@ -1332,7 +1346,7 @@ let mut tree = Tree::new(Aabb3::new(Point3::new(0f32,0f32,0f32), Point3::new(100
 	0,
 );
 for i in 0..9{
-	tree.add(i+1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(i+1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), i+1);
 }
 println!("loose:{:?} deep:{}", tree.loose, tree.deep);
 for i in 1..tree.oct_slab.len() + 1 {
@@ -1358,7 +1372,7 @@ let mut tree = Tree::new(
 	0,
 );
 for i in 0..6{
-	tree.add(i+1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(0.1,0.1,0.1)));
+	tree.add(i+1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(0.1,0.1,0.1)), i+1);
 }
 for i in 1..tree.oct_slab.len() + 1 {
 	println!("test1, id:{}, oct: {:?}", i, tree.oct_slab.get(i).unwrap());
@@ -1391,7 +1405,7 @@ for i in 1..tree.ab_map.len() + 1 {
 }
 println!("outer:{:?}", tree.outer);
 let aabb = Aabb3::new(Point3::new(0.05f32,0.05f32,0f32), Point3::new(0.05f32,0.05f32,1000f32));
-let mut args:AbQueryArgs<f32> = AbQueryArgs::new(aabb.clone());
+let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
 tree.query(&aabb, intersects, &mut args, ab_query_func);
 assert_eq!(args.result(), [1, 2, 3]);
 }
@@ -1401,7 +1415,7 @@ assert_eq!(args.result(), [1, 2, 3]);
 fn test3(){
 	let z_max: f32 = 4194304.0;
 	let aabb = Aabb3::new(Point3::new(700.0, 100.0, -z_max), Point3::new(700.0, 100.0, z_max));
-	let mut args:AbQueryArgs<f32> = AbQueryArgs::new(aabb.clone());
+	let mut args:AbQueryArgs<f32, usize> = AbQueryArgs::new(aabb.clone());
 
 	// let mut tree = Tree::new(Aabb3::new(Point3::new(0f32,0f32,0f32), Point3::new(1000f32,1000f32,1000f32)),
 	// 	0,
@@ -1410,21 +1424,21 @@ fn test3(){
 	// 	0,
 	// );
 	let mut tree = Tree::new(Aabb3::new(Point3::new(-1024f32,-1024f32,-z_max), Point3::new(3072f32,3072f32,z_max)), 0, 0, 0, 0);
-	tree.add(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
 	tree.collect();
 
 	tree.update(0, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
 	tree.update(1, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
 	tree.update(2, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 700.0, 1.0)));
 
-	tree.add(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(4,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(5,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(6,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(7,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(8,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(9,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(4,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(5,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(6,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(7,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(8,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(9,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
 	tree.collect();
 	tree.update(3, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1000.0, 350.0, 1.0)));
 	tree.update(4, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(800.0, 175.0, 1.0)));
@@ -1441,9 +1455,9 @@ fn test3(){
 	tree.remove(5);
 
 
-	tree.add(5,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(6,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(7,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(5,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(6,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(7,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
 	tree.collect();
 	tree.update(5, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(640.0, 140.0, 1.0)));
 	tree.update(6, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(512.0, 112.0, 1.0)));
@@ -1467,9 +1481,9 @@ println!("-------------------------------------------------------dirtys:{:?}", t
 	tree.remove(6);
 	tree.remove(5);
 
-	tree.add(5,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(6,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
-	tree.add(7,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)));
+	tree.add(5,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(6,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
+	tree.add(7,Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(1.0,1.0,1.0)), 1);
 	tree.collect();
 
 	tree.update(5, Aabb3::new(Point3::new(0.0,0.0,0.0), Point3::new(640.0, 140.0, 1.0)));
