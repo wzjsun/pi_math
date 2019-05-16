@@ -218,6 +218,18 @@ pub fn shift(&mut self, id: usize, distance: Vector3<S>) -> bool {
 	remove_add(self, id, r);
 	true
 }
+// 获取指定id的可写绑定
+pub unsafe fn get_mut(&mut self, id: usize) -> Option<&mut T> {
+	match self.ab_map.get_mut(id) {
+		Some(n) => Some(&mut n.bind),
+		_ => None
+	}
+}
+// 获取指定id的可写绑定
+pub unsafe fn get_unchecked_mut(&mut self, id: usize) -> &mut T {
+	let node = self.ab_map.get_unchecked_mut(id);
+	&mut node.bind
+}
 // 更新指定id的绑定
 pub fn update_bind(&mut self, id: usize, bind: T) -> bool {
 	match self.ab_map.get_mut(id) {
