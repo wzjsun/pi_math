@@ -520,7 +520,7 @@ fn read_point_2d(points: &[f32], indices: &[u16], indices_index: usize) -> Point
     (points[ix + 0], points[ix + 1])
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LgCfg{
     /**
      * 该属性长度
@@ -530,7 +530,7 @@ pub struct LgCfg{
 }
 // 将属性流按照线性渐变插值,  返回插值后的属性流
 /**
- * in：
+ * in： TODO 改成引用
  *      points   三维点数据
  *      attrs   多个属性的 各点属性数据集 
  *      polygon_indices   多边形顶点数据
