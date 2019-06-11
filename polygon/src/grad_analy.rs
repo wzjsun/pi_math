@@ -194,12 +194,6 @@ pub fn polygon_grad_analy(pos_list: Vec<f32>, attr_list: Vec<Vec<f32>>, grad_lis
         result_datas.point_color_list.push(data[(POINT_COLOR_DATA_INDEX + 3) as usize]);
     }
 
-    println!("success!!!!!!!!!!!!!");
-    println!("{:?}", result_datas.attr_list);
-    println!("{:?}", result_datas.point_color_list);
-    println!("{:?}", result_datas.point_list);
-    println!("{:?}", result_datas.triangle_indices);
-
     result_datas
 }
 
@@ -612,8 +606,6 @@ fn analy_intersections(
         let result_point: PointData = clone_point_data(p0);
         result_point_list.push(result_point);
 
-        println!("{:?}", result_point);
-
         let is_same_direct = get_dot(
             resort_line[(LINE_VEC_INDEX + 0) as usize], 
             resort_line[(LINE_VEC_INDEX + 1) as usize], 
@@ -681,8 +673,6 @@ fn analy_intersections(
                     result_point_list.push(result_point);
 
                     grad_result_point.push((result_point_list.len() - 1) as u16);
-
-                    println!("{:?}", result_point);
                 }
             }
             grad_index = grad_index + 1;

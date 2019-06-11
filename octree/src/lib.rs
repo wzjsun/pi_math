@@ -1187,10 +1187,28 @@ ab_func: fn(arg: &mut B, id: usize, aabb: &Aabb3<S>, bind: &T),
 ) {
 let node = unsafe { oct_slab.get_unchecked(oct_id) };
 let mut id = node.nodes.head;
+let mut old = id;
 while id > 0 {
 	let ab = unsafe { ab_map.get_unchecked(id) };
 	ab_func(ab_arg, id, &ab.aabb, &ab.bind);
 	id = ab.next;
+	if id == old {
+		let mut i = 0;
+		for or in ab_map.iter() {
+			i += 1;
+			if let Some(r) = or {
+				//let r = ab_map.get(r).unwrap();
+				println!("ab----------, id:{}, ab: {:?}", i, (r.parent, r.layer, r.parent_child, r.next, r.prev));
+			}
+			
+		}
+		for (id, n) in oct_slab.iter() {
+			//let r = ab_map.get(r).unwrap();
+			println!("oct=========, id:{}, oct: {:?}", id, n);
+		}
+		break
+	}
+	old = id;
 }
 #[macro_use()]
 macro_rules! child_macro {
