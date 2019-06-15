@@ -33,7 +33,7 @@ pub fn split_by_radius_border(x: f32, y: f32, w: f32, h: f32, radius: f32, borde
     }
 }
 
-pub fn split_by_lg(mut positions: Vec<f32>, indices: Vec<u16>, lg_pos: &[f32], start: (f32, f32), end: (f32, f32)) -> (Vec<f32>, Vec<Vec<u16>>) {
+pub fn split_by_lg(positions: Vec<f32>, indices: Vec<u16>, lg_pos: &[f32], start: (f32, f32), end: (f32, f32)) -> (Vec<f32>, Vec<Vec<u16>>) {
     split_by_lg_0(positions, &indices, lg_pos, start, end)
 }
 
@@ -85,14 +85,12 @@ pub fn find_lg_endp(polygon: &[f32], angle: f32) -> ((f32, f32), (f32, f32)) {
     let mut point_dot: Vec<f32> = Vec::new();
     let count = polygon.len() / 2;
     let mut index: usize = 0;
-    let mut x: f32 = 0.0;
-    let mut y: f32 = 0.0;
     let mut min_dot = std::f32::MAX;
     let mut max_dot = std::f32::MIN;
     let mut min_index = 0;
     while index < count {
-        x = polygon[index * 2];
-        y = polygon[index * 2 + 1];
+        let x = polygon[index * 2];
+        let y = polygon[index * 2 + 1];
         let dot = get_dot(x, y, direct_vec2[0], direct_vec2[1]);
 
         if dot < min_dot {
@@ -597,14 +595,13 @@ pub fn interp_by_lg_0(points: &[f32], polygon_indices: &[u16], mut attrs: Vec<Ve
     let dist    = (dist_x.powi(2) + dist_y.powi(2)).sqrt();
     let point_count = polygon_indices.len();
 
-    let mut index: usize = 0;
 
     let lg_count    = lg_pos.len();
 
     let attr_count  = lg_attrs.len();
 
     if attrs.len() == 0 {
-        index = 0;
+        let mut index = 0;
         while index < attr_count {
             attrs.push(Vec::new());
             index = index + 1;
@@ -617,13 +614,12 @@ pub fn interp_by_lg_0(points: &[f32], polygon_indices: &[u16], mut attrs: Vec<Ve
     // 方向上单位向量
     let direct_vec2 = [(end.0 - start.0) / dist, (end.1 - start.1) / dist];
 
-    let mut dot = 0.0;
     let mut point: Point3D;
     
-    index = 0;
+    let mut index = 0;
     while index < point_count {
         point   = read_point_3d(points, polygon_indices, index);
-        dot     = get_dot(point.0 - start.0, point.1 - start.1, direct_vec2[0], direct_vec2[1]);
+        let dot     = get_dot(point.0 - start.0, point.1 - start.1, direct_vec2[0], direct_vec2[1]);
 
         let mut attr_index: usize = 0;
         let lg = dot / dist;
@@ -654,7 +650,6 @@ pub fn interp_by_lg_0(points: &[f32], polygon_indices: &[u16], mut attrs: Vec<Ve
 
             let mut pre_attr: f32;
             let mut nxt_attr: f32;
-            let mut a_index: usize = 0;
             let attr_size = src_attr.unit;
             let point_attr_index: u16 = (attr_size as u16) * polygon_indices[index];
 
@@ -669,7 +664,7 @@ pub fn interp_by_lg_0(points: &[f32], polygon_indices: &[u16], mut attrs: Vec<Ve
                 _cur_len = _cur_len + 1;
             }
 
-            a_index = 0;
+            let mut a_index = 0;
             while a_index < attr_size {
                 pre_attr = src_attr.data[pre * attr_size + a_index];
                 nxt_attr = src_attr.data[nxt * attr_size + a_index];
@@ -691,14 +686,13 @@ pub fn interp_by_lg_0(points: &[f32], polygon_indices: &[u16], mut attrs: Vec<Ve
 fn insert_vec(mut data_list: Vec<f32>, data: &[f32], size: u16, index: u16) -> Vec<f32> {
     let trag_len = size * (index + 1);
     let mut curr_len = data_list.len() as u16;
-    let mut i_index = curr_len;
     while curr_len < trag_len {
         data_list.push(0.0);
 
         curr_len = curr_len + 1;
     }
 
-    i_index = size * (index as u16);
+    let i_index = size * (index as u16);
     let mut i: u16 = 0;
     while i < size {
         data_list[(i_index + i) as usize] = data[i as usize];
@@ -1019,7 +1013,7 @@ fn get_two_lines_intersection(line1: LineCfg, line2: LineCfg) -> (bool, f32, f32
     let d = a0 * b1 - a1 * b0;
     let mut x = 0.0;
     let mut y = 0.0;
-    let mut is_get = false;
+    let is_get;
 
     // 线平行
     if d == 0.0 {
@@ -1108,11 +1102,10 @@ fn find_pre_next_grad_direct(data_list: &[f32], value: f32) -> (usize, usize) {
  * 获得指定方向的 单位方向向量
  */
 fn get_direction_vector(angle: f32) -> [f32; 2] {
-    let mut radius: f32 = 0.0;
 
     let _angle   = angle % 360.0;
 
-    radius  = ((_angle as f32) / 180.0) * std::f32::consts::PI;
+    let radius  = ((_angle as f32) / 180.0) * std::f32::consts::PI;
 
     [radius.cos(), radius.sin()]
 }

@@ -1603,9 +1603,14 @@ fn test4(){
 		let old = clone_tree(&tree.oct_slab, &tree.ab_map);
 		tree.shift(r, Vector3::new(x as f32, y as f32, 0.0));
 		assert_eq!(check_tree(&tree.oct_slab, &tree.ab_map, old, r), false);
+		if x + y > 120 {
+			let old = clone_tree(&tree.oct_slab, &tree.ab_map);
+			tree.collect();
+			assert_eq!(check_tree(&tree.oct_slab, &tree.ab_map, old, r), false);
+		}
 	}
 }
-
+#[cfg(test)]
 fn clone_tree(
 	oct_slab: &Slab<OctNode<f32>>,
 	ab_map: &VecMap<AbNode<f32, usize>>,
