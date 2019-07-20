@@ -1,7 +1,11 @@
 [workspace]
 members = [
-  "cg",
+  "cg2d",
+  "color",
+  "octree",
+  "rect_map",
   "cgmath",
   "collision",
   "hash_value",
+  "polygon",
 ]

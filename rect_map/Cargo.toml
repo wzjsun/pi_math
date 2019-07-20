@@ -1,0 +1,9 @@
+[package]
+name = "rect_map"
+version = "0.1.0"
+authors = ["yineng <dev@dev.com>"]
+
+[dependencies]
+cgmath = { path = "../cgmath" }
+slab = { path = "../../pi_lib/slab" }
+

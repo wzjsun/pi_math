@@ -43,11 +43,11 @@ impl<S: Default> Default for Point2<S> {
     }
 }
 
-// impl<S: Default> Default for Point3<S> {
-//     fn default() -> Self{
-//         Point3::zero()
-//     }
-// }
+impl<S: Default> Default for Point3<S> {
+    fn default() -> Self{
+        Point3::new(S::default(), S::default(), S::default())
+    }
+}
 
 impl<S: BaseFloat> Default for Matrix2<S> {
     fn default() -> Self{
